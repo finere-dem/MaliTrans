@@ -27,17 +27,25 @@ public class NoteController {
         return ResponseEntity.ok(service.sendNote(dto));
     }
 
-    @Operation(summary = "Notes données")
+    @Operation(summary = "Notes données", 
+               description = "Retourne toutes les notes données par l'utilisateur authentifié. " +
+                           "userId est automatiquement extrait du JWT (pas de paramètre).")
     @ApiResponses({@ApiResponse(responseCode = "200")})
-    @GetMapping("/from/{userId}")
-    public List<NoteDTO> notesFrom(@PathVariable Long userId) {
-        return service.notesGiven(userId);
+    @GetMapping("/from/me")
+    public List<NoteDTO> notesFrom() {
+        // SECURITY: Extract authenticated user ID from JWT (prevent IDOR)
+        Long authenticatedUserId = com.malitrans.transport.security.SecurityUtil.getCurrentUserId();
+        return service.notesGiven(authenticatedUserId);
     }
 
-    @Operation(summary = "Notes reçues")
+    @Operation(summary = "Notes reçues", 
+               description = "Retourne toutes les notes reçues par l'utilisateur authentifié. " +
+                           "userId est automatiquement extrait du JWT (pas de paramètre).")
     @ApiResponses({@ApiResponse(responseCode = "200")})
-    @GetMapping("/to/{userId}")
-    public List<NoteDTO> notesTo(@PathVariable Long userId) {
-        return service.notesReceived(userId);
+    @GetMapping("/to/me")
+    public List<NoteDTO> notesTo() {
+        // SECURITY: Extract authenticated user ID from JWT (prevent IDOR)
+        Long authenticatedUserId = com.malitrans.transport.security.SecurityUtil.getCurrentUserId();
+        return service.notesReceived(authenticatedUserId);
     }
 }
