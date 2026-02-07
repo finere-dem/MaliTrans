@@ -41,11 +41,24 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*")); // Allow all origins (use pattern for wildcard)
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Allow all methods
+        
+        // Allow specific origins: Koyeb production URL and localhost for development
+        configuration.setAllowedOrigins(Arrays.asList(
+
+            "faithful-kamillah-woyo-62a37bc3.koyeb.app/",
+            "http://localhost:3000",
+            "http://localhost:8080",
+            "http://localhost:5173", // Vite default port
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:8080",
+            "http://127.0.0.1:5173"
+        ));
+        
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*")); // Allow all headers
-        configuration.setAllowCredentials(false); // Not needed for stateless JWT
+        configuration.setAllowCredentials(true); // Enable credentials for cookies/auth headers
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type")); // Expose headers to client
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
