@@ -44,8 +44,8 @@ public class SecurityConfig {
         
         // Allow specific origins: Koyeb production URL and localhost for development
         configuration.setAllowedOrigins(Arrays.asList(
-            "https://favourite-merola-woyo-1e5a90a3.koyeb.app",
-            
+            "https://faithful-kamillah-woyo-62a37bc3.koyeb.app",
+
             "http://localhost:3000",
             "http://localhost:8080",
             "http://localhost:5173", // Vite default port
