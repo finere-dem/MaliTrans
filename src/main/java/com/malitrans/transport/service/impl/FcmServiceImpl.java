@@ -14,14 +14,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collections;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 /**
  * Implémentation du service FCM.
- * Charge service-account.json au démarrage et initialise FirebaseApp de manière sécurisée.
+ * Charge les credentials Firebase au démarrage (12-Factor / Cloud-Native) :
+ * - En production (Koyeb, etc.) : variable d'environnement FIREBASE_JSON (contenu du JSON).
+ * - En local : fichier classpath service-account.json.
  * Les erreurs d'envoi sont loguées sans faire crasher l'application.
  */
 @Service
@@ -40,15 +43,22 @@ public class FcmServiceImpl implements FcmService {
             firebaseInitialized = true;
             return;
         }
-        try (InputStream inputStream = new ClassPathResource(SERVICE_ACCOUNT_RESOURCE).getInputStream()) {
+        String firebaseJson = System.getenv("FIREBASE_JSON");
+        try (InputStream inputStream = (firebaseJson != null && !firebaseJson.isBlank())
+                ? new ByteArrayInputStream(firebaseJson.getBytes(StandardCharsets.UTF_8))
+                : new ClassPathResource(SERVICE_ACCOUNT_RESOURCE).getInputStream()) {
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(inputStream))
                     .build();
             FirebaseApp.initializeApp(options);
             firebaseInitialized = true;
-            logger.info("Firebase App initialized successfully from {}", SERVICE_ACCOUNT_RESOURCE);
+            if (firebaseJson != null && !firebaseJson.isBlank()) {
+                logger.info("Firebase App initialized successfully from FIREBASE_JSON env var");
+            } else {
+                logger.info("Firebase App initialized successfully from classpath {}", SERVICE_ACCOUNT_RESOURCE);
+            }
         } catch (IOException e) {
-            logger.warn("Could not load Firebase credentials from {}. FCM will be disabled. {}", 
+            logger.warn("Could not load Firebase credentials (FIREBASE_JSON or {}). FCM will be disabled. {}",
                     SERVICE_ACCOUNT_RESOURCE, e.getMessage());
             firebaseInitialized = false;
         }
