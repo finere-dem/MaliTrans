@@ -1,9 +1,11 @@
 package com.malitrans.transport.controller;
 
 import com.malitrans.transport.dto.UtilisateurDTO;
+import com.malitrans.transport.dto.request.FcmTokenRequest;
 import com.malitrans.transport.mapper.UtilisateurMapper;
 import com.malitrans.transport.model.DeliveryCompany;
 import com.malitrans.transport.model.Role;
+import com.malitrans.transport.security.SecurityUtil;
 import com.malitrans.transport.service.DeliveryCompanyService;
 import com.malitrans.transport.service.UtilisateurService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +14,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -72,6 +76,23 @@ public class UserController {
                 })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(companies);
+    }
+
+    @Operation(summary = "Enregistrer le token FCM",
+               description = "Permet à l'application mobile d'enregistrer son token FCM pour recevoir les notifications push. " +
+                           "L'utilisateur connecté (JWT) est identifié automatiquement.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Token enregistré"),
+        @ApiResponse(responseCode = "400", description = "Body invalide"),
+        @ApiResponse(responseCode = "401", description = "Non authentifié")
+    })
+    @PatchMapping("/fcm-token")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> updateFcmToken(@RequestBody FcmTokenRequest request) {
+        String username = SecurityUtil.getCurrentUsername();
+        String token = request.getToken(); // null autorisé pour révoquer le token
+        utilisateurService.updateFcmToken(username, token);
+        return ResponseEntity.ok().build();
     }
 }
 

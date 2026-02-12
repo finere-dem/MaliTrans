@@ -17,6 +17,7 @@ public class Utilisateur {
     private String phone; // Numéro de téléphone
     private String vehicleType; // e.g., "Moto", "Voiture", "Camion"
     private Double rating; // Average rating from notes (0.0 to 5.0)
+    @Column(length = 512)
     private String fcmToken; // Firebase Cloud Messaging token for push notifications
     private String companyName; // Nom de l'entreprise (pour les Suppliers)
     private String address; // Adresse

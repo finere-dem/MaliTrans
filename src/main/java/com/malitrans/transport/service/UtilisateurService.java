@@ -31,4 +31,17 @@ public class UtilisateurService {
     public List<Utilisateur> findByRole(Role role) {
         return utilisateurRepository.findByRole(role);
     }
+
+    /**
+     * Met à jour le token FCM de l'utilisateur identifié par son username.
+     *
+     * @param username Username de l'utilisateur (ex: issu du JWT)
+     * @param token    Nouveau token FCM (peut être null pour révoquer)
+     */
+    public void updateFcmToken(String username, String token) {
+        Utilisateur user = utilisateurRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
+        user.setFcmToken(token);
+        utilisateurRepository.save(user);
+    }
 }

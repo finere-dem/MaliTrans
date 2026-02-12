@@ -54,6 +54,9 @@ logs/
 uploads/
 test-uploads/
 
+# Firebase / secrets (ne pas versionner les clés)
+src/main/resources/service-account.json
+
 # Spring Boot
 application-local.properties
 application-dev.properties
