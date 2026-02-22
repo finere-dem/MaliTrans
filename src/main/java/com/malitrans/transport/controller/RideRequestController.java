@@ -316,7 +316,7 @@ public class RideRequestController {
     }
 
     @Operation(summary = "Modifier le prix", description = "Permet au client de modifier le prix d'une course tant qu'elle n'est pas acceptée.")
-    @PreAuthorize("hasAuthorit y('CLIENT')")
+    @PreAuthorize("hasAuthority('CLIENT')")
     @PatchMapping("/{id}/price")
     public ResponseEntity<?> updatePrice(@PathVariable Long id, @RequestParam Double newPrice) {
         try {
