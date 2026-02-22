@@ -299,4 +299,33 @@ public class RideRequestController {
         Long chauffeurId = SecurityUtil.getCurrentUserId();
         return ResponseEntity.ok(service.historyForChauffeur(chauffeurId, page, limit));
     }
+
+
+    @Operation(summary = "Annuler une course", description = "Permet au client d'annuler sa course tant qu'elle n'est pas acceptée.")
+    @PreAuthorize("hasAuthority('CLIENT')")
+    @PatchMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelRide(@PathVariable Long id) {
+        try {
+            Long clientId = SecurityUtil.getCurrentUserId();
+            return ResponseEntity.ok(service.cancelRide(id, clientId));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(java.util.Map.of("error", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Modifier le prix", description = "Permet au client de modifier le prix d'une course tant qu'elle n'est pas acceptée.")
+    @PreAuthorize("hasAuthorit y('CLIENT')")
+    @PatchMapping("/{id}/price")
+    public ResponseEntity<?> updatePrice(@PathVariable Long id, @RequestParam Double newPrice) {
+        try {
+            Long clientId = SecurityUtil.getCurrentUserId();
+            return ResponseEntity.ok(service.updateRidePrice(id, clientId, newPrice));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(java.util.Map.of("error", e.getMessage()));
+        }
+    }
 }

@@ -532,4 +532,52 @@ public class RideRequestService {
                 })
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Annuler une course (Client uniquement)
+     */
+    @Transactional
+    public RideRequestDTO cancelRide(Long rideId, Long clientId) {
+        RideRequest request = repository.findById(rideId)
+                .orElseThrow(() -> new IllegalArgumentException("Course introuvable avec l'ID: " + rideId));
+
+        // Sécurité : Vérifier que l'utilisateur est bien le propriétaire
+        if (request.getClient() == null || !request.getClient().getId().equals(clientId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Vous n'êtes pas autorisé à annuler cette course.");
+        }
+
+        // Sécurité : On ne peut annuler que si aucun chauffeur n'a accepté
+        if (request.getValidationStatus() != ValidationStatus.READY_FOR_PICKUP &&
+                request.getValidationStatus() != ValidationStatus.WAITING_CLIENT_VALIDATION &&
+                request.getValidationStatus() != ValidationStatus.WAITING_SUPPLIER_VALIDATION) {
+            throw new IllegalStateException("Impossible d'annuler : la course a déjà été acceptée ou est en cours.");
+        }
+
+        request.setValidationStatus(ValidationStatus.CANCELED);
+        return mapper.toDto(repository.save(request));
+    }
+
+    /**
+     * Modifier le prix d'une course (Client uniquement)
+     */
+    @Transactional
+    public RideRequestDTO updateRidePrice(Long rideId, Long clientId, Double newPrice) {
+        RideRequest request = repository.findById(rideId)
+                .orElseThrow(() -> new IllegalArgumentException("Course introuvable avec l'ID: " + rideId));
+
+        // Sécurité : Vérifier que l'utilisateur est bien le propriétaire
+        if (request.getClient() == null || !request.getClient().getId().equals(clientId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Vous n'êtes pas autorisé à modifier cette course.");
+        }
+
+        // Sécurité : On ne peut modifier que si aucun chauffeur n'a accepté
+        if (request.getValidationStatus() != ValidationStatus.READY_FOR_PICKUP &&
+                request.getValidationStatus() != ValidationStatus.WAITING_CLIENT_VALIDATION &&
+                request.getValidationStatus() != ValidationStatus.WAITING_SUPPLIER_VALIDATION) {
+            throw new IllegalStateException("Impossible de modifier le prix : la course a déjà été acceptée ou est en cours.");
+        }
+
+        request.setPrice(newPrice);
+        return mapper.toDto(repository.save(request));
+    }
 }
