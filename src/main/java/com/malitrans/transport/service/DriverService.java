@@ -27,7 +27,8 @@ public class DriverService {
 
     /**
      * Add a guarantor to the currently logged-in driver
-     * @param driverId The driver's ID (extracted from JWT)
+     * 
+     * @param driverId     The driver's ID (extracted from JWT)
      * @param guarantorDTO The guarantor information
      * @return The created guarantor DTO
      */
@@ -45,7 +46,8 @@ public class DriverService {
         // Check if driver already has 2 guarantors
         List<Guarantor> existingGuarantors = guarantorRepository.findByDriver(driver);
         if (existingGuarantors.size() >= REQUIRED_GUARANTORS) {
-            throw new IllegalStateException("Driver already has " + REQUIRED_GUARANTORS + " guarantors. Maximum allowed.");
+            throw new IllegalStateException(
+                    "Driver already has " + REQUIRED_GUARANTORS + " guarantors. Maximum allowed.");
         }
 
         // Create new guarantor
@@ -73,8 +75,10 @@ public class DriverService {
     }
 
     /**
-     * Request activation - checks if driver has uploaded documents and has 2 guarantors
+     * Request activation - checks if driver has uploaded documents and has 2
+     * guarantors
      * Updates status to PENDING_VALIDATION if requirements are met
+     * 
      * @param driverId The driver's ID (extracted from JWT)
      */
     @Transactional
@@ -97,14 +101,15 @@ public class DriverService {
         List<Guarantor> guarantors = guarantorRepository.findByDriver(driver);
         if (guarantors.size() < REQUIRED_GUARANTORS) {
             throw new IllegalStateException(
-                String.format("Driver must have %d guarantors. Currently has %d.", REQUIRED_GUARANTORS, guarantors.size()));
+                    String.format("Driver must have %d guarantors. Currently has %d.", REQUIRED_GUARANTORS,
+                            guarantors.size()));
         }
 
         // Verify all guarantors have identity documents
         for (Guarantor guarantor : guarantors) {
             if (guarantor.getIdentityDocumentUrl() == null || guarantor.getIdentityDocumentUrl().trim().isEmpty()) {
                 throw new IllegalStateException(
-                    String.format("Guarantor '%s' must upload identity document", guarantor.getName()));
+                        String.format("Guarantor '%s' must upload identity document", guarantor.getName()));
             }
         }
 
@@ -117,6 +122,7 @@ public class DriverService {
 
     /**
      * Get all guarantors for a driver
+     * 
      * @param driverId The driver's ID
      * @return List of guarantor DTOs
      */
@@ -141,7 +147,8 @@ public class DriverService {
 
     /**
      * Update driver's identity document URL
-     * @param driverId The driver's ID (extracted from JWT)
+     * 
+     * @param driverId            The driver's ID (extracted from JWT)
      * @param identityDocumentUrl The URL of the uploaded identity document
      */
     @Transactional
@@ -168,6 +175,7 @@ public class DriverService {
     /**
      * Get driver's own dossier (identity document, guarantors, status, etc.)
      * Minimal response for driver UI
+     * 
      * @param driverId The driver's ID (extracted from JWT)
      * @return DriverDossierDTO with driver's information
      */
@@ -213,5 +221,36 @@ public class DriverService {
 
         return dossier;
     }
-}
 
+    /**
+     * Update driver's online/offline status
+     * 
+     * @param driverId The driver's ID (extracted from JWT)
+     * @param isOnline Provide true to go online, false to go offline
+     */
+    @Transactional
+    public void updateOnlineStatus(Long driverId, boolean isOnline) {
+        Utilisateur driver = utilisateurRepository.findById(driverId)
+                .orElseThrow(() -> new IllegalArgumentException("Driver not found with ID: " + driverId));
+
+        if (driver.getRole() != com.malitrans.transport.model.Role.CHAUFFEUR) {
+            throw new IllegalArgumentException("User is not a driver");
+        }
+
+        driver.setIsOnline(isOnline);
+        utilisateurRepository.save(driver);
+    }
+
+    /**
+     * Get the driver's current online status
+     * 
+     * @param driverId The driver's ID
+     * @return true if the driver is online
+     */
+    public boolean getOnlineStatus(Long driverId) {
+        Utilisateur driver = utilisateurRepository.findById(driverId)
+                .orElseThrow(() -> new IllegalArgumentException("Driver not found with ID: " + driverId));
+
+        return driver.getIsOnline() != null && driver.getIsOnline();
+    }
+}

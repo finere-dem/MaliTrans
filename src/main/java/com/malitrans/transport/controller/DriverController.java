@@ -27,21 +27,20 @@ public class DriverController {
         this.driverService = driverService;
     }
 
-    @Operation(summary = "Ajouter un garant", 
-               description = "Ajoute un garant au chauffeur authentifié. " +
-                           "Un chauffeur doit avoir exactement 2 garants. " +
-                           "L'ID du chauffeur est automatiquement extrait du JWT.")
+    @Operation(summary = "Ajouter un garant", description = "Ajoute un garant au chauffeur authentifié. " +
+            "Un chauffeur doit avoir exactement 2 garants. " +
+            "L'ID du chauffeur est automatiquement extrait du JWT.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Garant ajouté avec succès"),
-        @ApiResponse(responseCode = "400", description = "Données invalides ou limite de garants atteinte"),
-        @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
+            @ApiResponse(responseCode = "200", description = "Garant ajouté avec succès"),
+            @ApiResponse(responseCode = "400", description = "Données invalides ou limite de garants atteinte"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
     })
     @PostMapping("/guarantors")
     public ResponseEntity<GuarantorDTO> addGuarantor(@RequestBody GuarantorDTO guarantorDTO) {
         try {
             // SECURITY: Extract driver ID from JWT (Zero Trust)
             Long driverId = SecurityUtil.getCurrentUserId();
-            
+
             GuarantorDTO result = driverService.addGuarantor(driverId, guarantorDTO);
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -51,38 +50,36 @@ public class DriverController {
         }
     }
 
-    @Operation(summary = "Lister les garants", 
-               description = "Retourne la liste des garants du chauffeur authentifié.")
+    @Operation(summary = "Lister les garants", description = "Retourne la liste des garants du chauffeur authentifié.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Liste des garants"),
-        @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
+            @ApiResponse(responseCode = "200", description = "Liste des garants"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
     })
     @GetMapping("/guarantors")
     public ResponseEntity<List<GuarantorDTO>> getGuarantors() {
         // SECURITY: Extract driver ID from JWT (Zero Trust)
         Long driverId = SecurityUtil.getCurrentUserId();
-        
+
         List<GuarantorDTO> guarantors = driverService.getGuarantors(driverId);
         return ResponseEntity.ok(guarantors);
     }
 
-    @Operation(summary = "Demander l'activation", 
-               description = "Demande l'activation du compte chauffeur. " +
-                           "Vérifie que le chauffeur a uploadé son document d'identité et a 2 garants. " +
-                           "Change le statut à PENDING_VALIDATION pour validation par l'admin.")
+    @Operation(summary = "Demander l'activation", description = "Demande l'activation du compte chauffeur. " +
+            "Vérifie que le chauffeur a uploadé son document d'identité et a 2 garants. " +
+            "Change le statut à PENDING_VALIDATION pour validation par l'admin.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Demande d'activation soumise avec succès"),
-        @ApiResponse(responseCode = "400", description = "Prérequis non remplis (document manquant, garants insuffisants)"),
-        @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
+            @ApiResponse(responseCode = "200", description = "Demande d'activation soumise avec succès"),
+            @ApiResponse(responseCode = "400", description = "Prérequis non remplis (document manquant, garants insuffisants)"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
     })
     @PostMapping("/request-activation")
     public ResponseEntity<Map<String, String>> requestActivation() {
         try {
             // SECURITY: Extract driver ID from JWT (Zero Trust)
             Long driverId = SecurityUtil.getCurrentUserId();
-            
+
             driverService.requestActivation(driverId);
-            
+
             Map<String, String> response = new HashMap<>();
             response.put("message", "Activation request submitted successfully. Waiting for admin validation.");
             return ResponseEntity.ok(response);
@@ -93,13 +90,13 @@ public class DriverController {
         }
     }
 
-    @Operation(summary = "Update identity document URL", 
-               description = "Update the identity document URL for the authenticated driver. " +
-                           "The URL should be obtained from the file upload endpoint.")
+    @Operation(summary = "Update identity document URL", description = "Update the identity document URL for the authenticated driver. "
+            +
+            "The URL should be obtained from the file upload endpoint.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Identity document URL updated successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid request (empty URL or invalid driver)"),
-        @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
+            @ApiResponse(responseCode = "200", description = "Identity document URL updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request (empty URL or invalid driver)"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
     })
     @PutMapping("/me/identity-document")
     public ResponseEntity<Map<String, String>> updateIdentityDocument(
@@ -107,9 +104,9 @@ public class DriverController {
         try {
             // SECURITY: Extract driver ID from JWT (Zero Trust)
             Long driverId = SecurityUtil.getCurrentUserId();
-            
+
             driverService.updateIdentityDocument(driverId, request.getIdentityDocumentUrl());
-            
+
             Map<String, String> response = new HashMap<>();
             response.put("message", "Identity document URL updated successfully");
             return ResponseEntity.ok(response);
@@ -120,24 +117,53 @@ public class DriverController {
         }
     }
 
-    @Operation(summary = "Get my dossier", 
-               description = "Get the authenticated driver's own dossier including identity document, guarantors, status, and profile information.")
+    @Operation(summary = "Get my dossier", description = "Get the authenticated driver's own dossier including identity document, guarantors, status, and profile information.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Dossier retrieved successfully"),
-        @ApiResponse(responseCode = "400", description = "Driver not found"),
-        @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
+            @ApiResponse(responseCode = "200", description = "Dossier retrieved successfully"),
+            @ApiResponse(responseCode = "400", description = "Driver not found"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
     })
     @GetMapping("/me/dossier")
     public ResponseEntity<DriverDossierDTO> getMyDossier() {
         try {
             // SECURITY: Extract driver ID from JWT (Zero Trust)
             Long driverId = SecurityUtil.getCurrentUserId();
-            
+
             DriverDossierDTO dossier = driverService.getMyDossier(driverId);
             return ResponseEntity.ok(dossier);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
     }
-}
 
+    @Operation(summary = "Get driver online status", description = "Get the online/offline status of the current driver")
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Boolean>> getOnlineStatus() {
+        Long driverId = SecurityUtil.getCurrentUserId();
+        boolean isOnline = driverService.getOnlineStatus(driverId);
+
+        Map<String, Boolean> response = new HashMap<>();
+        response.put("isOnline", isOnline);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Toggle driver status", description = "Set the driver online or offline")
+    @PostMapping("/status/toggle")
+    public ResponseEntity<Map<String, Object>> toggleStatus(@RequestBody Map<String, Boolean> request) {
+        try {
+            Long driverId = SecurityUtil.getCurrentUserId();
+            Boolean isOnline = request.getOrDefault("isOnline", false);
+
+            driverService.updateOnlineStatus(driverId, isOnline);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Status updated successfully");
+            response.put("isOnline", isOnline);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+}
