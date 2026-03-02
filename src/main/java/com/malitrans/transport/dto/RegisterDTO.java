@@ -10,6 +10,7 @@ public class RegisterDTO {
     /** Téléphone : accepte "phone" ou "phoneNumber" (compatibilité app Flutter). */
     @JsonAlias("phoneNumber")
     private String phone;
+    private String email; // Optional email field
     private String role; // "CLIENT" or "DRIVER" (will be converted to CHAUFFEUR)
     private String vehicleType; // Optional, for drivers
     private Long companyId; // Required for CHAUFFEUR role
@@ -54,6 +55,14 @@ public class RegisterDTO {
         this.phone = phone;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public String getRole() {
         return role;
     }
@@ -78,4 +87,3 @@ public class RegisterDTO {
         this.companyId = companyId;
     }
 }
-

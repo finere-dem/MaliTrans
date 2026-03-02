@@ -24,9 +24,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Utilisateur utilisateur = utilisateurRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+        // identifier can be either email or phone
+        Utilisateur utilisateur = utilisateurRepository.findByEmailOrPhone(identifier, identifier)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email or phone: " + identifier));
 
         return User.builder()
                 .username(utilisateur.getUsername())
@@ -43,10 +44,10 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (role == null) {
             return Collections.emptyList();
         }
-        
-        // Convert Role enum to Spring Security authority format (without ROLE_ prefix to match hasAnyAuthority)
+
+        // Convert Role enum to Spring Security authority format (without ROLE_ prefix
+        // to match hasAnyAuthority)
         String authority = role.name();
         return Collections.singletonList(new SimpleGrantedAuthority(authority));
     }
 }
-

@@ -3,7 +3,6 @@ package com.malitrans.transport.service;
 import com.malitrans.transport.dto.AuthResponse;
 import com.malitrans.transport.dto.RefreshTokenRequest;
 import com.malitrans.transport.dto.RegisterDTO;
-import com.malitrans.transport.exception.TokenRefreshException;
 import com.malitrans.transport.model.DeliveryCompany;
 import com.malitrans.transport.model.RefreshToken;
 import com.malitrans.transport.model.Role;
@@ -35,13 +34,13 @@ public class AuthServiceImpl implements AuthService {
     private final OtpService otpService;
 
     public AuthServiceImpl(UtilisateurRepository utilisateurRepository,
-                          PasswordEncoder passwordEncoder,
-                          JwtTokenUtil jwtTokenUtil,
-                          AuthenticationManager authenticationManager,
-                          RefreshTokenService refreshTokenService,
-                          DeliveryCompanyService deliveryCompanyService,
-                          PhoneUtil phoneUtil,
-                          OtpService otpService) {
+            PasswordEncoder passwordEncoder,
+            JwtTokenUtil jwtTokenUtil,
+            AuthenticationManager authenticationManager,
+            RefreshTokenService refreshTokenService,
+            DeliveryCompanyService deliveryCompanyService,
+            PhoneUtil phoneUtil,
+            OtpService otpService) {
         this.utilisateurRepository = utilisateurRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenUtil = jwtTokenUtil;
@@ -63,11 +62,14 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Invalid phone number format");
         }
 
-        if (utilisateurRepository.existsByUsername(registerDTO.getUsername())) {
-            throw new IllegalArgumentException("Username already exists: " + registerDTO.getUsername());
-        }
         if (utilisateurRepository.existsByPhone(normalizedPhone)) {
             throw new IllegalArgumentException("Phone number already exists: " + normalizedPhone);
+        }
+
+        if (registerDTO.getEmail() != null && !registerDTO.getEmail().isBlank()) {
+            if (utilisateurRepository.existsByEmail(registerDTO.getEmail())) {
+                throw new IllegalArgumentException("Email already exists: " + registerDTO.getEmail());
+            }
         }
 
         Role role = convertRole(registerDTO.getRole());
@@ -76,11 +78,20 @@ public class AuthServiceImpl implements AuthService {
         }
 
         Utilisateur utilisateur = new Utilisateur();
-        utilisateur.setUsername(registerDTO.getUsername());
+
+        // Auto-generate technical username using the normalized phone number to ensure
+        // uniqueness
+        String generatedUsername = normalizedPhone;
+        // Optional: If you ever allow email-only registration in the future without
+        // phone
+        // you would fallback to email here. Currently, phone is required.
+        utilisateur.setUsername(generatedUsername);
+
         utilisateur.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
         utilisateur.setFirstName(registerDTO.getFirstName());
         utilisateur.setLastName(registerDTO.getLastName());
         utilisateur.setPhone(normalizedPhone); // Stockage au format international (ex: +223...)
+        utilisateur.setEmail(registerDTO.getEmail()); // Nouveau champ email
         utilisateur.setRole(role);
         utilisateur.setEnabled(false); // Activé après vérification OTP via POST /auth/verify-registration
 
@@ -89,7 +100,8 @@ public class AuthServiceImpl implements AuthService {
                 throw new IllegalArgumentException("Company ID is required when registering as a driver");
             }
             DeliveryCompany company = deliveryCompanyService.findByIdAndActive(registerDTO.getCompanyId())
-                    .orElseThrow(() -> new IllegalArgumentException("Company not found or inactive with ID: " + registerDTO.getCompanyId()));
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Company not found or inactive with ID: " + registerDTO.getCompanyId()));
             utilisateur.setCompany(company);
             utilisateur.setVehicleType(registerDTO.getVehicleType());
             utilisateur.setStatus(UserStatus.PENDING_COMPANY_VERIFICATION);
@@ -108,19 +120,19 @@ public class AuthServiceImpl implements AuthService {
         String roleString = utilisateur.getRole() != null ? utilisateur.getRole().name() : "CLIENT";
         String accessToken = jwtTokenUtil.generateToken(utilisateur.getUsername(), List.of(roleString));
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(utilisateur.getId());
-        return new AuthResponse(accessToken, refreshToken.getToken(), utilisateur.getUsername(), roleString, utilisateur.getId());
+        return new AuthResponse(accessToken, refreshToken.getToken(), utilisateur.getUsername(), roleString,
+                utilisateur.getId());
     }
 
     @Override
-    public AuthResponse login(String username, String password) {
+    public AuthResponse login(String identifier, String password) {
         try {
-            // Authenticate user
+            // Authenticate user (identifier can be email or phone)
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, password)
-            );
+                    new UsernamePasswordAuthenticationToken(identifier, password));
 
             // Get user entity for role and userId
-            Utilisateur utilisateur = utilisateurRepository.findByUsername(username)
+            Utilisateur utilisateur = utilisateurRepository.findByEmailOrPhone(identifier, identifier)
                     .orElseThrow(() -> new BadCredentialsException("User not found"));
 
             // Validate user has an ID (should never be null for persisted entities)
@@ -130,17 +142,18 @@ public class AuthServiceImpl implements AuthService {
 
             // Get role as String for JWT token
             String roleString = utilisateur.getRole() != null ? utilisateur.getRole().name() : "CLIENT";
-            
-            // Generate JWT access token with roles claim
-            String accessToken = jwtTokenUtil.generateToken(username, List.of(roleString));
+
+            // Generate JWT access token with roles claim (using technical username in JWT)
+            String accessToken = jwtTokenUtil.generateToken(utilisateur.getUsername(), List.of(roleString));
 
             // Generate refresh token
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(utilisateur.getId());
 
             // Return response with access token, refresh token, username, role, and userId
-            return new AuthResponse(accessToken, refreshToken.getToken(), username, roleString, utilisateur.getId());
+            return new AuthResponse(accessToken, refreshToken.getToken(), utilisateur.getUsername(), roleString,
+                    utilisateur.getId());
         } catch (Exception e) {
-            throw new BadCredentialsException("Invalid username or password", e);
+            throw new BadCredentialsException("Invalid credentials", e);
         }
     }
 
@@ -151,16 +164,16 @@ public class AuthServiceImpl implements AuthService {
 
         // Verify refresh token
         RefreshToken refreshToken = refreshTokenService.verifyExpiration(requestRefreshToken);
-        
+
         // Get user from refresh token
         Utilisateur user = refreshToken.getUser();
-        
+
         // Get role as String for JWT token
         String roleString = user.getRole() != null ? user.getRole().name() : "CLIENT";
-        
+
         // Generate new access token with roles claim
         String newAccessToken = jwtTokenUtil.generateToken(user.getUsername(), List.of(roleString));
-        
+
         // Return new access token with same refresh token
         return new AuthResponse(newAccessToken, refreshToken.getToken(), user.getUsername(), roleString, user.getId());
     }
@@ -173,14 +186,14 @@ public class AuthServiceImpl implements AuthService {
         if (roleString == null) {
             return null;
         }
-        
+
         String upperRole = roleString.toUpperCase().trim();
-        
+
         // Convert "DRIVER" to "CHAUFFEUR" for compatibility
         if ("DRIVER".equals(upperRole)) {
             return Role.CHAUFFEUR;
         }
-        
+
         // Try to match other roles directly
         try {
             return Role.valueOf(upperRole);
@@ -189,4 +202,3 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 }
-
