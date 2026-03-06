@@ -25,6 +25,8 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
 
         Optional<Utilisateur> findByEmailOrPhone(String email, String phone);
 
+        Optional<Utilisateur> findByUsernameOrEmailOrPhone(String username, String email, String phone);
+
         List<Utilisateur> findByRole(Role role);
 
         /**
