@@ -41,25 +41,24 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
+
         // Allow specific origins: Koyeb production URL and localhost for development
         configuration.setAllowedOrigins(Arrays.asList(
-            "https://faithful-kamillah-woyo-62a37bc3.koyeb.app",
+                "https://faithful-kamillah-woyo-62a37bc3.koyeb.app",
 
-            "http://localhost:3000",
-            "http://localhost:8080",
-            "http://localhost:5173", // Vite default port
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:8080",
-            "http://127.0.0.1:5173"
-        ));
-        
+                "http://localhost:3000",
+                "http://localhost:8080",
+                "http://localhost:5173", // Vite default port
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:8080",
+                "http://127.0.0.1:5173"));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*")); // Allow all headers
         configuration.setAllowCredentials(true); // Enable credentials for cookies/auth headers
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type")); // Expose headers to client
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -71,13 +70,19 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Enable CORS
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless session
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll() // Public endpoints: /auth/login, /auth/register, /auth/refresh-token
+                        .requestMatchers("/auth/**").permitAll() // Public endpoints: /auth/login, /auth/register,
+                                                                 // /auth/refresh-token
                         .requestMatchers("/public/**").permitAll() // Public endpoints: /public/companies
+                        .requestMatchers("/ws-tracking/**").permitAll() // WebSockets tracking (pas de JWT)
+                        .requestMatchers("/test-tracking.html").permitAll() // Page de test websocket
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/files/**").authenticated() // File endpoints: authenticated users only
-                        .requestMatchers("/company/**").hasAnyAuthority("COMPANY_MANAGER", "SUPPLIER") // Company endpoints: allow COMPANY_MANAGER and SUPPLIER
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers("/company/**").hasAnyAuthority("COMPANY_MANAGER", "SUPPLIER") // Company
+                                                                                                       // endpoints:
+                                                                                                       // allow
+                                                                                                       // COMPANY_MANAGER
+                                                                                                       // and SUPPLIER
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

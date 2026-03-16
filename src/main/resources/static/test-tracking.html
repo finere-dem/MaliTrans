@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test WebSocket Tracking MaliTrans</title>
+    <!-- Chargement de SockJS et Stomp.js depuis le CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { color: #333; }
+        .controls { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 15px; font-size: 14px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #logs { margin-top: 20px; background: #f4f4f4; padding: 15px; border: 1px solid #ddd; height: 300px; overflow-y: auto; list-style-type: none; }
+        li { margin-bottom: 5px; padding: 5px; border-bottom: 1px solid #eee; }
+        .received { color: green; }
+        .sent { color: blue; }
+        .system { color: #555; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Tracking GPS - Course 1234</h1>
+        
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">1. Connecter au canal</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Se déconnecter</button>
+            <button id="simulateBtn" onclick="simulateLocation()" disabled>2. Simuler position Livreur</button>
+        </div>
+
+        <ul id="logs">
+            <li class="system">En attente de connexion...</li>
+        </ul>
+    </div>
+
+    <script>
+        var stompClient = null;
+        var rideId = 1234;
+
+        function connect() {
+            // Création de la connexion WebSocket sur l'endpoint configuré
+            var socket = new SockJS('/ws-tracking');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function (frame) {
+                setConnected(true);
+                logMessage("system", "Connecté: " + frame);
+                
+                // Abonnement au canal spécifique de la course 1234
+                stompClient.subscribe('/topic/ride/' + rideId, function (messageOutput) {
+                    var location = JSON.parse(messageOutput.body);
+                    logMessage("received", "🔽 REÇU : Lat: " + location.latitude.toFixed(4) + 
+                               ", Lng: " + location.longitude.toFixed(4) + 
+                               " à " + location.timestamp);
+                });
+                
+                logMessage("system", "Abonné au canal /topic/ride/" + rideId);
+            }, function(error) {
+                logMessage("system", "Erreur de connexion: " + error);
+            });
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+            setConnected(false);
+            logMessage("system", "Déconnecté");
+        }
+
+        function simulateLocation() {
+            if (!stompClient) { return; }
+
+            // Générer des coordonnées aléatoires autour de Bamako (Mali)
+            // Bamako center: ~12.6392, -8.0029
+            var latOffset = (Math.random() - 0.5) * 0.05;
+            var lngOffset = (Math.random() - 0.5) * 0.05;
+            
+            var locationMessage = {
+                rideId: rideId,
+                latitude: 12.6392 + latOffset,
+                longitude: -8.0029 + lngOffset,
+                timestamp: new Date().toLocaleTimeString()
+            };
+
+            // Envoi du message au backend via /app/driver/location
+            stompClient.send("/app/driver/location", {}, JSON.stringify(locationMessage));
+            
+            logMessage("sent", "🔼 ENVOYÉ: Lat: " + locationMessage.latitude.toFixed(4) + 
+                       ", Lng: " + locationMessage.longitude.toFixed(4));
+        }
+
+        function setConnected(connected) {
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            document.getElementById('simulateBtn').disabled = !connected;
+        }
+
+        function logMessage(type, message) {
+            var logs = document.getElementById('logs');
+            var p = document.createElement('li');
+            p.className = type;
+            p.appendChild(document.createTextNode(message));
+            logs.appendChild(p);
+            // Auto-scroll to bottom
+            logs.scrollTop = logs.scrollHeight;
+        }
+    </script>
+</body>
+</html>
