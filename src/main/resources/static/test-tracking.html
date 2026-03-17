@@ -1,113 +1,479 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test WebSocket Tracking MaliTrans</title>
-    <!-- Chargement de SockJS et Stomp.js depuis le CDN -->
+    <title>Suivi de votre livraison - Woyo</title>
+
+    <!-- SockJS & STOMP pour le WebSocket -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <!-- Google Maps API avec la vraie clé du projet -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAdacKLoIXm-bx0rPpaVsfBEkRJLNkOi20&callback=initMap"
+        async defer></script>
+
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
-        .container { max-width: 600px; margin: 0 auto; }
-        h1 { color: #333; }
-        .controls { margin-top: 20px; display: flex; gap: 10px; }
-        button { padding: 10px 15px; font-size: 14px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        #logs { margin-top: 20px; background: #f4f4f4; padding: 15px; border: 1px solid #ddd; height: 300px; overflow-y: auto; list-style-type: none; }
-        li { margin-bottom: 5px; padding: 5px; border-bottom: 1px solid #eee; }
-        .received { color: green; }
-        .sent { color: blue; }
-        .system { color: #555; font-style: italic; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f1117;
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── HEADER ── */
+        header {
+            background: linear-gradient(135deg, #1a1f2e, #252d3d);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #2e3650;
+            z-index: 10;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #4f8ef7, #7b5ff5);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: #8892aa;
+            margin-top: 1px;
+        }
+
+        /* Badge de statut  */
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1f2a3f;
+            border: 1px solid #2e3650;
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f59e0b;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-badge.connected .status-dot {
+            background: #22c55e;
+            animation: none;
+        }
+
+        .status-badge.connected {
+            border-color: #22c55e33;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+        }
+
+        /* ── MAP ── */
+        #map {
+            flex: 1;
+            width: 100%;
+        }
+
+        /* ── BOTTOM PANEL ── */
+        .bottom-panel {
+            background: linear-gradient(180deg, #1a1f2e, #141821);
+            border-top: 1px solid #2e3650;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            z-index: 10;
+        }
+
+        .coords-display {
+            font-size: 12px;
+            color: #8892aa;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .coords-display strong {
+            color: #c5cfe0;
+            font-size: 13px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #connectBtn {
+            background: linear-gradient(135deg, #4f8ef7, #7b5ff5);
+            color: white;
+        }
+
+        #connectBtn:hover:not(:disabled) {
+            box-shadow: 0 4px 15px #4f8ef750;
+        }
+
+        #disconnectBtn {
+            background: #1f2a3f;
+            color: #8892aa;
+            border: 1px solid #2e3650;
+        }
+
+        #simulateBtn {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+        }
+
+        #simulateBtn:hover:not(:disabled) {
+            box-shadow: 0 4px 15px #22c55e50;
+        }
+
+        /* ── LOG DRAWER ── */
+        .log-toggle {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            background: #252d3d;
+            border: 1px solid #2e3650;
+            color: #8892aa;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.2s ease;
+        }
+
+        .log-toggle:hover {
+            background: #2e3650;
+            color: #fff;
+        }
+
+        .log-drawer {
+            position: fixed;
+            bottom: 130px;
+            right: 20px;
+            width: 380px;
+            max-height: 220px;
+            background: #141821;
+            border: 1px solid #2e3650;
+            border-radius: 14px;
+            overflow-y: auto;
+            padding: 12px;
+            z-index: 20;
+            font-size: 12px;
+            font-family: monospace;
+            display: none;
+        }
+
+        .log-drawer.open {
+            display: block;
+        }
+
+        .log-line {
+            padding: 4px 0;
+            border-bottom: 1px solid #1f2a3f;
+            color: #8892aa;
+        }
+
+        .log-line.recv {
+            color: #22c55e;
+        }
+
+        .log-line.sent {
+            color: #4f8ef7;
+        }
+
+        .log-line.sys {
+            color: #f59e0b;
+        }
+
+        /* Marker pulse overlay (custom) */
+        .marker-label {
+            font-weight: bold;
+        }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Test Tracking GPS - Course 1234</h1>
-        
-        <div class="controls">
-            <button id="connectBtn" onclick="connect()">1. Connecter au canal</button>
-            <button id="disconnectBtn" onclick="disconnect()" disabled>Se déconnecter</button>
-            <button id="simulateBtn" onclick="simulateLocation()" disabled>2. Simuler position Livreur</button>
-        </div>
 
-        <ul id="logs">
-            <li class="system">En attente de connexion...</li>
-        </ul>
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <div class="header-left">
+            <div class="logo">🛵</div>
+            <div>
+                <div class="header-title">Suivi de votre livraison</div>
+                <div class="header-subtitle">Course #16 · Bamako, Mali</div>
+            </div>
+        </div>
+        <div id="statusBadge" class="status-badge">
+            <div class="status-dot"></div>
+            <span id="statusText">En attente du livreur...</span>
+        </div>
+    </header>
+
+    <!-- MAP CONTAINER -->
+    <div id="map"></div>
+
+    <!-- LOG TOGGLE -->
+    <button class="log-toggle" onclick="toggleLogs()">📋 Logs</button>
+    <div id="logDrawer" class="log-drawer"></div>
+
+    <!-- BOTTOM PANEL -->
+    <div class="bottom-panel">
+        <div class="coords-display">
+            <strong id="coordsDisplay">— En attente de position —</strong>
+            <span id="lastUpdate">Dernière mise à jour: —</span>
+        </div>
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">🔗 Connecter</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>⏹ Déconnecter</button>
+            <button id="simulateBtn" onclick="simulateLocation()" disabled>📡 Simuler déplacement</button>
+        </div>
     </div>
 
     <script>
-        var stompClient = null;
-        var rideId = 1234;
+        // ─── Config ────────────────────────────────────────────────────────
+        var RIDE_ID = 16;
+        var BAMAKO = { lat: 12.6392, lng: -8.0029 };
 
+        // ─── State ─────────────────────────────────────────────────────────
+        var stompClient = null;
+        var map = null;
+        var driverMarker = null;
+        var routePath = null;        // Polyline trail
+        var routeCoords = [];          // Trail points
+        var simLat = BAMAKO.lat;
+        var simLng = BAMAKO.lng;
+
+        // ─── Google Maps Init ──────────────────────────────────────────────
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: BAMAKO,
+                zoom: 15,
+                styles: darkMapStyles(),
+                disableDefaultUI: false,
+                zoomControl: true,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true,
+            });
+
+            // Marker représentant le livreur
+            driverMarker = new google.maps.Marker({
+                position: BAMAKO,
+                map: map,
+                title: 'Livreur',
+                icon: {
+                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">' +
+                        '<circle cx="22" cy="22" r="20" fill="#4f8ef7" stroke="white" stroke-width="3"/>' +
+                        '<text x="22" y="29" text-anchor="middle" font-size="18">🛵</text>' +
+                        '</svg>'
+                    ),
+                    scaledSize: new google.maps.Size(44, 44),
+                    anchor: new google.maps.Point(22, 22),
+                },
+                animation: google.maps.Animation.DROP,
+            });
+
+            // Tracé du trajet (trail)
+            routePath = new google.maps.Polyline({
+                path: routeCoords,
+                geodesic: true,
+                strokeColor: '#4f8ef7',
+                strokeOpacity: 0.8,
+                strokeWeight: 3,
+            });
+            routePath.setMap(map);
+
+            addLog('sys', '🗺️ Carte Google Maps initialisée');
+        }
+
+        // ─── WebSocket / STOMP ─────────────────────────────────────────────
         function connect() {
-            // Création de la connexion WebSocket sur l'endpoint configuré
-            var socket = new SockJS('/ws-tracking');
+            var socket = new SockJS('/api/ws-tracking');
             stompClient = Stomp.over(socket);
+            stompClient.debug = null; // Silence STOMP console spam
 
             stompClient.connect({}, function (frame) {
                 setConnected(true);
-                logMessage("system", "Connecté: " + frame);
-                
-                // Abonnement au canal spécifique de la course 1234
-                stompClient.subscribe('/topic/ride/' + rideId, function (messageOutput) {
-                    var location = JSON.parse(messageOutput.body);
-                    logMessage("received", "🔽 REÇU : Lat: " + location.latitude.toFixed(4) + 
-                               ", Lng: " + location.longitude.toFixed(4) + 
-                               " à " + location.timestamp);
+                addLog('sys', '✅ Connecté au serveur STOMP');
+
+                // Abonnement au canal de la course
+                stompClient.subscribe('/topic/ride/' + RIDE_ID, function (msg) {
+                    var data = JSON.parse(msg.body);
+                    updateDriverPosition(data);
                 });
-                
-                logMessage("system", "Abonné au canal /topic/ride/" + rideId);
-            }, function(error) {
-                logMessage("system", "Erreur de connexion: " + error);
+
+                addLog('sys', '📡 Abonné à /topic/ride/' + RIDE_ID);
+
+            }, function (error) {
+                addLog('sys', '❌ Erreur de connexion: ' + error);
+                setConnected(false);
             });
         }
 
         function disconnect() {
-            if (stompClient !== null) {
-                stompClient.disconnect();
-            }
+            if (stompClient) stompClient.disconnect();
             setConnected(false);
-            logMessage("system", "Déconnecté");
+            addLog('sys', '🔌 Déconnecté');
         }
 
-        function simulateLocation() {
-            if (!stompClient) { return; }
+        // ─── Mise à jour position ──────────────────────────────────────────
+        function updateDriverPosition(data) {
+            var pos = { lat: data.latitude, lng: data.longitude };
 
-            // Générer des coordonnées aléatoires autour de Bamako (Mali)
-            // Bamako center: ~12.6392, -8.0029
-            var latOffset = (Math.random() - 0.5) * 0.05;
-            var lngOffset = (Math.random() - 0.5) * 0.05;
-            
-            var locationMessage = {
-                rideId: rideId,
-                latitude: 12.6392 + latOffset,
-                longitude: -8.0029 + lngOffset,
+            // Déplacer le marqueur en douceur
+            driverMarker.setPosition(pos);
+            map.panTo(pos);
+
+            // Ajouter au tracé
+            routeCoords.push(pos);
+            routePath.setPath(routeCoords);
+
+            // Mettre à jour l'UI
+            document.getElementById('coordsDisplay').textContent =
+                'Lat: ' + data.latitude.toFixed(5) + '  |  Lng: ' + data.longitude.toFixed(5);
+            document.getElementById('lastUpdate').textContent =
+                'Dernière mise à jour: ' + (data.timestamp || new Date().toLocaleTimeString());
+
+            // Mettre à jour le badge statut
+            document.getElementById('statusText').textContent = '🛵 Livreur en route';
+
+            addLog('recv', '🔽 Lat: ' + data.latitude.toFixed(5) + ', Lng: ' + data.longitude.toFixed(5));
+        }
+
+        // ─── Simulation de mouvement ───────────────────────────────────────
+        function simulateLocation() {
+            if (!stompClient) return;
+
+            // Chaque clic déplace la position de +0.0005 dans les deux axes
+            simLat += 0.0005;
+            simLng += 0.0005;
+
+            var payload = {
+                rideId: RIDE_ID,
+                latitude: simLat,
+                longitude: simLng,
                 timestamp: new Date().toLocaleTimeString()
             };
 
-            // Envoi du message au backend via /app/driver/location
-            stompClient.send("/app/driver/location", {}, JSON.stringify(locationMessage));
-            
-            logMessage("sent", "🔼 ENVOYÉ: Lat: " + locationMessage.latitude.toFixed(4) + 
-                       ", Lng: " + locationMessage.longitude.toFixed(4));
+            stompClient.send('/app/driver/location', {}, JSON.stringify(payload));
+            addLog('sent', '🔼 Envoyé: Lat ' + simLat.toFixed(5) + ', Lng ' + simLng.toFixed(5));
         }
 
+        // ─── UI Helpers ────────────────────────────────────────────────────
         function setConnected(connected) {
             document.getElementById('connectBtn').disabled = connected;
             document.getElementById('disconnectBtn').disabled = !connected;
             document.getElementById('simulateBtn').disabled = !connected;
+
+            var badge = document.getElementById('statusBadge');
+            if (connected) {
+                badge.classList.add('connected');
+            } else {
+                badge.classList.remove('connected');
+                document.getElementById('statusText').textContent = 'En attente du livreur...';
+            }
         }
 
-        function logMessage(type, message) {
-            var logs = document.getElementById('logs');
-            var p = document.createElement('li');
-            p.className = type;
-            p.appendChild(document.createTextNode(message));
-            logs.appendChild(p);
-            // Auto-scroll to bottom
-            logs.scrollTop = logs.scrollHeight;
+        function toggleLogs() {
+            document.getElementById('logDrawer').classList.toggle('open');
+        }
+
+        function addLog(type, msg) {
+            var drawer = document.getElementById('logDrawer');
+            var line = document.createElement('div');
+            line.className = 'log-line ' + type;
+            line.textContent = new Date().toLocaleTimeString() + ' › ' + msg;
+            drawer.prepend(line);
+            // Limiter l'affichage à 50 lignes
+            while (drawer.children.length > 50) drawer.removeChild(drawer.lastChild);
+        }
+
+        // ─── Dark Map Theme ────────────────────────────────────────────────
+        function darkMapStyles() {
+            return [
+                { elementType: 'geometry', stylers: [{ color: '#1a1f2e' }] },
+                { elementType: 'labels.text.fill', stylers: [{ color: '#8892aa' }] },
+                { elementType: 'labels.text.stroke', stylers: [{ color: '#141821' }] },
+                { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#252d3d' }] },
+                { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1a1f2e' }] },
+                { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2e3a55' }] },
+                { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0f1117' }] },
+                { featureType: 'poi', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+                { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+                { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#c5cfe0' }] },
+            ];
         }
     </script>
 </body>
+
 </html>

@@ -16,24 +16,26 @@ public class RideRequest {
     private Utilisateur client;
 
     @ManyToOne
-    private Utilisateur supplier;  // Le fournisseur (shop/vendor) - nullable in P2P model
+    private Utilisateur supplier; // Le fournisseur (shop/vendor) - nullable in P2P model
 
     @ManyToOne
     private Utilisateur chauffeur; // Le chauffeur assigné
 
     @Enumerated(EnumType.STRING)
-    private FlowType flowType;  // CLIENT_INITIATED ou SUPPLIER_INITIATED
+    private FlowType flowType; // CLIENT_INITIATED ou SUPPLIER_INITIATED
 
     @Enumerated(EnumType.STRING)
-    private ValidationStatus validationStatus;  // Statut de validation
+    private ValidationStatus validationStatus; // Statut de validation
 
-    private String qrCodePickup;    // Token pour validation par le fournisseur
-    private String qrCodeDelivery;  // Token pour validation par le client
+    private String qrCodePickup; // Token pour validation par le fournisseur
+    private String qrCodeDelivery; // Token pour validation par le client
 
-    private Double price;  // Prix fixe (plus de négociation)
+    private Double price; // Prix fixe (plus de négociation)
 
-    private String otherPartyName;  // Nom de l'autre partie (Recipient si isSenderClient=true, Sender/Supplier si false)
+    private String otherPartyName; // Nom de l'autre partie (Recipient si isSenderClient=true, Sender/Supplier si
+                                   // false)
     private String otherPartyPhone; // Téléphone de l'autre partie
+    private String packageDescription; // Description du colis à livrer
     private Boolean isSenderClient; // true si le Client envoie, false si le Client reçoit
 
     private LocalDateTime createdAt;
@@ -46,48 +48,131 @@ public class RideRequest {
     }
 
     // getters and setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getOrigin() { return origin; }
-    public void setOrigin(String origin) { this.origin = origin; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getDestination() { return destination; }
-    public void setDestination(String destination) { this.destination = destination; }
+    public String getOrigin() {
+        return origin;
+    }
 
-    public Utilisateur getClient() { return client; }
-    public void setClient(Utilisateur client) { this.client = client; }
+    public void setOrigin(String origin) {
+        this.origin = origin;
+    }
 
-    public Utilisateur getSupplier() { return supplier; }
-    public void setSupplier(Utilisateur supplier) { this.supplier = supplier; }
+    public String getDestination() {
+        return destination;
+    }
 
-    public Utilisateur getChauffeur() { return chauffeur; }
-    public void setChauffeur(Utilisateur chauffeur) { this.chauffeur = chauffeur; }
+    public void setDestination(String destination) {
+        this.destination = destination;
+    }
 
-    public FlowType getFlowType() { return flowType; }
-    public void setFlowType(FlowType flowType) { this.flowType = flowType; }
+    public Utilisateur getClient() {
+        return client;
+    }
 
-    public ValidationStatus getValidationStatus() { return validationStatus; }
-    public void setValidationStatus(ValidationStatus validationStatus) { this.validationStatus = validationStatus; }
+    public void setClient(Utilisateur client) {
+        this.client = client;
+    }
 
-    public String getQrCodePickup() { return qrCodePickup; }
-    public void setQrCodePickup(String qrCodePickup) { this.qrCodePickup = qrCodePickup; }
+    public Utilisateur getSupplier() {
+        return supplier;
+    }
 
-    public String getQrCodeDelivery() { return qrCodeDelivery; }
-    public void setQrCodeDelivery(String qrCodeDelivery) { this.qrCodeDelivery = qrCodeDelivery; }
+    public void setSupplier(Utilisateur supplier) {
+        this.supplier = supplier;
+    }
 
-    public Double getPrice() { return price; }
-    public void setPrice(Double price) { this.price = price; }
+    public Utilisateur getChauffeur() {
+        return chauffeur;
+    }
 
-    public String getOtherPartyName() { return otherPartyName; }
-    public void setOtherPartyName(String otherPartyName) { this.otherPartyName = otherPartyName; }
+    public void setChauffeur(Utilisateur chauffeur) {
+        this.chauffeur = chauffeur;
+    }
 
-    public String getOtherPartyPhone() { return otherPartyPhone; }
-    public void setOtherPartyPhone(String otherPartyPhone) { this.otherPartyPhone = otherPartyPhone; }
+    public FlowType getFlowType() {
+        return flowType;
+    }
 
-    public Boolean getIsSenderClient() { return isSenderClient; }
-    public void setIsSenderClient(Boolean isSenderClient) { this.isSenderClient = isSenderClient; }
+    public void setFlowType(FlowType flowType) {
+        this.flowType = flowType;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public ValidationStatus getValidationStatus() {
+        return validationStatus;
+    }
+
+    public void setValidationStatus(ValidationStatus validationStatus) {
+        this.validationStatus = validationStatus;
+    }
+
+    public String getQrCodePickup() {
+        return qrCodePickup;
+    }
+
+    public void setQrCodePickup(String qrCodePickup) {
+        this.qrCodePickup = qrCodePickup;
+    }
+
+    public String getQrCodeDelivery() {
+        return qrCodeDelivery;
+    }
+
+    public void setQrCodeDelivery(String qrCodeDelivery) {
+        this.qrCodeDelivery = qrCodeDelivery;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
+    }
+
+    public String getOtherPartyName() {
+        return otherPartyName;
+    }
+
+    public void setOtherPartyName(String otherPartyName) {
+        this.otherPartyName = otherPartyName;
+    }
+
+    public String getOtherPartyPhone() {
+        return otherPartyPhone;
+    }
+
+    public void setOtherPartyPhone(String otherPartyPhone) {
+        this.otherPartyPhone = otherPartyPhone;
+    }
+
+    public String getPackageDescription() {
+        return packageDescription;
+    }
+
+    public void setPackageDescription(String packageDescription) {
+        this.packageDescription = packageDescription;
+    }
+
+    public Boolean getIsSenderClient() {
+        return isSenderClient;
+    }
+
+    public void setIsSenderClient(Boolean isSenderClient) {
+        this.isSenderClient = isSenderClient;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }
