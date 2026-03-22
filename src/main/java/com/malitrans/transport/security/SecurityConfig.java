@@ -75,6 +75,7 @@ public class SecurityConfig {
                         .requestMatchers("/public/**").permitAll() // Public endpoints: /public/companies
                         .requestMatchers("/ws-tracking/**").permitAll() // WebSockets tracking (pas de JWT)
                         .requestMatchers("/test-tracking.html").permitAll() // Page de test websocket
+                        .requestMatchers("/config/maps-key").permitAll() // Clé API Google Maps public
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/files/**").authenticated() // File endpoints: authenticated users only
                         .requestMatchers("/company/**").hasAnyAuthority("COMPANY_MANAGER", "SUPPLIER") // Company
