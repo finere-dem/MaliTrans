@@ -9,9 +9,6 @@
     <!-- SockJS & STOMP pour le WebSocket -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-    <!-- Google Maps API avec la vraie clé du projet -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAdacKLoIXm-bx0rPpaVsfBEkRJLNkOi20&callback=initMap"
-        async defer></script>
 
     <style>
         * {
@@ -299,6 +296,38 @@
     </div>
 
     <script>
+        // ─── Load Google Maps API key from backend ─────────────────────────
+        function loadGoogleMapsScript() {
+            return fetch('/api/config/maps-key', { cache: 'no-store' })
+                .then(function (res) {
+                    if (!res.ok) throw new Error('Failed to load maps key: ' + res.status);
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (!data || !data.apiKey) throw new Error('Missing apiKey in response');
+
+                    // Avoid injecting twice
+                    if (document.getElementById('google-maps-script')) return;
+
+                    var script = document.createElement('script');
+                    script.id = 'google-maps-script';
+                    script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(data.apiKey) + '&callback=initMap';
+                    script.async = true;
+                    script.defer = true;
+                    script.onerror = function () {
+                        addLog('sys', '❌ Impossible de charger Google Maps');
+                    };
+                    document.head.appendChild(script);
+                })
+                .catch(function (err) {
+                    console.error(err);
+                    // addLog exists below; it’s ok to call after definition on next tick
+                    setTimeout(function () {
+                        try { addLog('sys', '❌ Clé Google Maps indisponible'); } catch (_) {}
+                    }, 0);
+                });
+        }
+
         // ─── Config ────────────────────────────────────────────────────────
         var RIDE_ID = 16;
         var BAMAKO = { lat: 12.6392, lng: -8.0029 };
@@ -311,6 +340,11 @@
         var routeCoords = [];          // Trail points
         var simLat = BAMAKO.lat;
         var simLng = BAMAKO.lng;
+
+        // Load Google Maps after page ready
+        window.addEventListener('load', function () {
+            loadGoogleMapsScript();
+        });
 
         // ─── Google Maps Init ──────────────────────────────────────────────
         function initMap() {
