@@ -117,79 +117,7 @@
             width: 100%;
         }
 
-        /* ── BOTTOM PANEL ── */
-        .bottom-panel {
-            background: linear-gradient(180deg, #1a1f2e, #141821);
-            border-top: 1px solid #2e3650;
-            padding: 16px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            z-index: 10;
-        }
-
-        .coords-display {
-            font-size: 12px;
-            color: #8892aa;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .coords-display strong {
-            color: #c5cfe0;
-            font-size: 13px;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-        }
-
-        button {
-            padding: 10px 18px;
-            border: none;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        button:hover {
-            transform: translateY(-1px);
-        }
-
-        button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        #connectBtn {
-            background: linear-gradient(135deg, #4f8ef7, #7b5ff5);
-            color: white;
-        }
-
-        #connectBtn:hover:not(:disabled) {
-            box-shadow: 0 4px 15px #4f8ef750;
-        }
-
-        #disconnectBtn {
-            background: #1f2a3f;
-            color: #8892aa;
-            border: 1px solid #2e3650;
-        }
-
-        #simulateBtn {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-        }
-
-        #simulateBtn:hover:not(:disabled) {
-            box-shadow: 0 4px 15px #22c55e50;
-        }
+        /* Les styles du simulateur et boutons ont été supprimés pour la production */
 
         /* ── LOG DRAWER ── */
         .log-toggle {
@@ -266,7 +194,7 @@
             <div class="logo">🛵</div>
             <div>
                 <div class="header-title">Suivi de votre livraison</div>
-                <div class="header-subtitle">Course #16 · Bamako, Mali</div>
+                <div class="header-subtitle">Course #<span id="displayRideId">...</span> · Woyo Livraison</div>
             </div>
         </div>
         <div id="statusBadge" class="status-badge">
@@ -282,18 +210,7 @@
     <button class="log-toggle" onclick="toggleLogs()">📋 Logs</button>
     <div id="logDrawer" class="log-drawer"></div>
 
-    <!-- BOTTOM PANEL -->
-    <div class="bottom-panel">
-        <div class="coords-display">
-            <strong id="coordsDisplay">— En attente de position —</strong>
-            <span id="lastUpdate">Dernière mise à jour: —</span>
-        </div>
-        <div class="controls">
-            <button id="connectBtn" onclick="connect()">🔗 Connecter</button>
-            <button id="disconnectBtn" onclick="disconnect()" disabled>⏹ Déconnecter</button>
-            <button id="simulateBtn" onclick="simulateLocation()" disabled>📡 Simuler déplacement</button>
-        </div>
-    </div>
+    <!-- BOTTOM PANEL a été supprimé pour la production -->
 
     <script>
         // ─── Load Google Maps API key from backend ─────────────────────────
@@ -329,21 +246,25 @@
         }
 
         // ─── Config ────────────────────────────────────────────────────────
-        var RIDE_ID = 16;
+        function getQueryParam(param) {
+            var urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+        var RIDE_ID = getQueryParam('rideId') || '16';
         var BAMAKO = { lat: 12.6392, lng: -8.0029 };
 
         // ─── State ─────────────────────────────────────────────────────────
         var stompClient = null;
         var map = null;
         var driverMarker = null;
-        var routePath = null;        // Polyline trail
-        var routeCoords = [];          // Trail points
-        var simLat = BAMAKO.lat;
-        var simLng = BAMAKO.lng;
+        var routePath = null;
+        var routeCoords = [];
 
-        // Load Google Maps after page ready
+        // Load Google Maps and Auto-Connect after page ready
         window.addEventListener('load', function () {
+            document.getElementById('displayRideId').textContent = RIDE_ID;
             loadGoogleMapsScript();
+            connect(); // AUTO-CONNECT EN PRODUCTION
         });
 
         // ─── Google Maps Init ──────────────────────────────────────────────
@@ -432,49 +353,15 @@
             routeCoords.push(pos);
             routePath.setPath(routeCoords);
 
-            // Mettre à jour l'UI
-            document.getElementById('coordsDisplay').textContent =
-                'Lat: ' + data.latitude.toFixed(5) + '  |  Lng: ' + data.longitude.toFixed(5);
-            document.getElementById('lastUpdate').textContent =
-                'Dernière mise à jour: ' + (data.timestamp || new Date().toLocaleTimeString());
-
-            // Mettre à jour le badge statut
-            document.getElementById('statusText').textContent = '🛵 Livreur en route';
-
-            addLog('recv', '🔽 Lat: ' + data.latitude.toFixed(5) + ', Lng: ' + data.longitude.toFixed(5));
-        }
-
-        // ─── Simulation de mouvement ───────────────────────────────────────
-        function simulateLocation() {
-            if (!stompClient) return;
-
-            // Chaque clic déplace la position de +0.0005 dans les deux axes
-            simLat += 0.0005;
-            simLng += 0.0005;
-
-            var payload = {
-                rideId: RIDE_ID,
-                latitude: simLat,
-                longitude: simLng,
-                timestamp: new Date().toLocaleTimeString()
-            };
-
-            stompClient.send('/app/driver/location', {}, JSON.stringify(payload));
-            addLog('sent', '🔼 Envoyé: Lat ' + simLat.toFixed(5) + ', Lng ' + simLng.toFixed(5));
-        }
-
         // ─── UI Helpers ────────────────────────────────────────────────────
         function setConnected(connected) {
-            document.getElementById('connectBtn').disabled = connected;
-            document.getElementById('disconnectBtn').disabled = !connected;
-            document.getElementById('simulateBtn').disabled = !connected;
-
             var badge = document.getElementById('statusBadge');
             if (connected) {
                 badge.classList.add('connected');
+                document.getElementById('statusText').textContent = '📡 Connexion établie...';
             } else {
                 badge.classList.remove('connected');
-                document.getElementById('statusText').textContent = 'En attente du livreur...';
+                document.getElementById('statusText').textContent = 'Connexion perdue...';
             }
         }
 
