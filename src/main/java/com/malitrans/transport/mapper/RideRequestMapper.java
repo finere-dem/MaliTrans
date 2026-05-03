@@ -31,6 +31,7 @@ public interface RideRequestMapper {
     @Mapping(target = "validationStatus", ignore = true) // Handled manually in service
     @Mapping(target = "qrCodePickup", ignore = true) // Generated in service
     @Mapping(target = "qrCodeDelivery", ignore = true) // Generated in service
+    @Mapping(target = "validationToken", ignore = true) // Generated in service
     RideRequest toEntity(RideRequestDTO dto);
     
     default String map(FlowType flowType) {

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Woyo - Validation de Livraison</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --secondary: #10B981;
+            --dark: #1F2937;
+            --light: #F9FAFB;
+            --white: #FFFFFF;
+            --gray: #6B7280;
+            --red: #EF4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--light);
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 450px;
+            padding: 30px;
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        .package-info {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            text-align: left;
+            border: 1px solid #E5E7EB;
+        }
+
+        .info-row {
+            margin-bottom: 15px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 16px;
+            color: var(--dark);
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: var(--white);
+            border: none;
+            padding: 16px 24px;
+            width: 100%;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        #qr-container {
+            display: none;
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 2px dashed #E5E7EB;
+        }
+
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+        }
+        
+        #qrcode img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .success-text {
+            color: var(--secondary);
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .instruction {
+            color: var(--gray);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .alert {
+            background: #FEE2E2;
+            color: var(--red);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .loader {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="logo">WOYO</div>
+        
+        <div id="error-alert" class="alert"></div>
+
+        <div id="step-1">
+            <h2 style="font-size: 20px; margin-bottom: 20px;">Validation de votre livraison</h2>
+            <p style="color: var(--gray); font-size: 15px; margin-bottom: 20px; text-align: left;">
+                Un colis est en route pour vous. Pour qu'un chauffeur puisse vous l'apporter, nous avons besoin de votre adresse de réception exacte.
+            </p>
+
+            <div class="package-info">
+                <div class="info-row">
+                    <div class="info-label">Expéditeur</div>
+                    <div class="info-value" id="val-sender">Chargement...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Contenu</div>
+                    <div class="info-value" id="val-desc">Chargement...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Ville de départ</div>
+                    <div class="info-value" id="val-origin">Chargement...</div>
+                </div>
+            </div>
+
+            <button id="validate-btn" class="btn" onclick="requestLocation()">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Partager ma position GPS
+                <div id="btn-loader" class="loader"></div>
+            </button>
+            <p style="font-size: 12px; color: var(--gray); margin-top: 15px;">
+                Votre position restera strictement confidentielle et ne servira qu'au livreur Woyo.
+            </p>
+        </div>
+
+        <div id="qr-container">
+            <div class="success-text">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Position confirmée !
+            </div>
+            <p class="instruction">
+                Conservez précieusement ce code QR ou gardez cette page ouverte. 
+                <strong>Le livreur le scannera</strong> lors de la remise de votre colis.
+            </p>
+            <div id="qrcode"></div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        const apiBaseUrl = '/api/public/validate';
+        
+        const errorAlert = document.getElementById('error-alert');
+        const validateBtn = document.getElementById('validate-btn');
+        const btnLoader = document.getElementById('btn-loader');
+        
+        function showError(message) {
+            errorAlert.innerText = message;
+            errorAlert.style.display = 'block';
+        }
+
+        // Fetch Initial Package Info
+        async function fetchPackageInfo() {
+            if (!token) {
+                showError("Lien invalide ou expiré : Aucun token trouvé.");
+                validateBtn.disabled = true;
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/${token}`);
+                const data = await response.json();
+                
+                if (response.status === 409) {
+                    showError("Cette commande a déjà été validée. En attente de livraison !");
+                    validateBtn.disabled = true;
+                    // Note: If we had stored the QR in local storage, we could show it here.
+                    // For now, we just block re-validation to prevent spam.
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(data.error || "Impossible de charger les informations.");
+                }
+
+                document.getElementById('val-sender').innerText = data.senderName;
+                document.getElementById('val-desc').innerText = data.packageDescription;
+                document.getElementById('val-origin').innerText = data.origin;
+                
+            } catch (error) {
+                showError(error.message);
+                validateBtn.disabled = true;
+            }
+        }
+
+        // Request Location and POST
+        function requestLocation() {
+            if (!navigator.geolocation) {
+                showError("La géolocalisation n'est pas supportée par votre navigateur.");
+                return;
+            }
+
+            // UI Loading state
+            validateBtn.disabled = true;
+            validateBtn.childNodes[1].textContent = "Recherche GPS en cours...";
+            btnLoader.style.display = 'block';
+            errorAlert.style.display = 'none';
+
+            navigator.geolocation.getCurrentPosition(sendLocation, handleError, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        }
+
+        async function sendLocation(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            try {
+                const response = await fetch(`${apiBaseUrl}/${token}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latitude: lat, longitude: lng })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || "Erreur de validation");
+                }
+
+                // Success!
+                document.getElementById('step-1').style.display = 'none';
+                document.getElementById('qr-container').style.display = 'block';
+                
+                // Generate QR Code
+                new QRCode(document.getElementById("qrcode"), {
+                    text: data.qrCodeDelivery,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#1F2937",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+
+            } catch (error) {
+                showError(error.message);
+                resetBtn();
+            }
+        }
+
+        function handleError(error) {
+            let msg = "Erreur GPS inconnue.";
+            if (error.code === 1) msg = "Vous avez refusé l'accès à la localisation GPS. C'est obligatoire pour recevoir votre colis.";
+            if (error.code === 2) msg = "Position GPS introuvable. Veuillez réessayer à l'extérieur.";
+            if (error.code === 3) msg = "Délai de recherche GPS dépassé.";
+            showError(msg);
+            resetBtn();
+        }
+
+        function resetBtn() {
+            validateBtn.disabled = false;
+            validateBtn.childNodes[1].textContent = " Réessayer / Partager position";
+            btnLoader.style.display = 'none';
+        }
+
+        // Initialize
+        if (token) {
+            fetchPackageInfo();
+        } else {
+            showError("Lien invalide : paramètre token manquant.");
+            validateBtn.disabled = true;
+        }
+    </script>
+</body>
+</html>

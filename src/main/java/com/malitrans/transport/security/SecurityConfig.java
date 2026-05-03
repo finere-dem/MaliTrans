@@ -74,7 +74,7 @@ public class SecurityConfig {
                                                                  // /auth/refresh-token
                         .requestMatchers("/public/**").permitAll() // Public endpoints: /public/companies
                         .requestMatchers("/ws-tracking/**").permitAll() // WebSockets tracking (pas de JWT)
-                        .requestMatchers("/test-tracking.html").permitAll() // Page de test websocket
+                        .requestMatchers("/test-tracking.html", "/validate.html").permitAll() // Pages statiques
                         .requestMatchers("/config/maps-key").permitAll() // Clé API Google Maps public
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/files/**").authenticated() // File endpoints: authenticated users only

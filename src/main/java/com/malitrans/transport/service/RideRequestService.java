@@ -98,22 +98,35 @@ public class RideRequestService {
             throw new IllegalArgumentException("flowType is required");
         }
         
-        // Flow initialization logic - P2P Model: Client requests go directly to READY_FOR_PICKUP
+        // Flow initialization logic - P2P Model: Client requests
         if (flowType == FlowType.CLIENT_INITIATED) {
-            // P2P Model: Skip supplier validation, go directly to READY_FOR_PICKUP
-            // Set status to READY_FOR_PICKUP immediately (drivers can see it right away)
-            entity.setValidationStatus(ValidationStatus.READY_FOR_PICKUP);
+            // Check if destination is provided. If not, it's waiting for recipient validation.
+            boolean hasDestination = dto.getDestination() != null && !dto.getDestination().trim().isEmpty();
             
-            // Generate both QR codes immediately (for pickup and delivery)
-            entity.setQrCodePickup(generateQrCode());
-            entity.setQrCodeDelivery(generateQrCode());
-            
-            RideRequest saved = repository.save(entity);
-            
-            // Notify all drivers immediately (no supplier validation needed)
-            notificationService.notifyDriversOfReadyRequest(saved);
-            
-            return mapper.toDto(saved);
+            if (!hasDestination) {
+                // Destination is unknown, waiting for recipient validation
+                entity.setValidationStatus(ValidationStatus.WAITING_RECIPIENT_VALIDATION);
+                // Generation of QR code delivery is done here too, but validation token is generated in PrePersist
+                entity.setQrCodeDelivery(generateQrCode());
+                entity.setQrCodePickup(generateQrCode());
+                
+                RideRequest saved = repository.save(entity);
+                return mapper.toDto(saved);
+            } else {
+                // Destination known, go directly to READY_FOR_PICKUP
+                entity.setValidationStatus(ValidationStatus.READY_FOR_PICKUP);
+                
+                // Generate both QR codes immediately (for pickup and delivery)
+                entity.setQrCodePickup(generateQrCode());
+                entity.setQrCodeDelivery(generateQrCode());
+                
+                RideRequest saved = repository.save(entity);
+                
+                // Notify all drivers immediately
+                notificationService.notifyDriversOfReadyRequest(saved);
+                
+                return mapper.toDto(saved);
+            }
             
         } else if (flowType == FlowType.SUPPLIER_INITIATED) {
             // Supplier is already set above (from currentUser)
@@ -158,6 +171,42 @@ public class RideRequestService {
     public Optional<RideRequestDTO> getRideRequestById(Long id) {
         return repository.findById(id)
                 .map(mapper::toDto);
+    }
+    
+    /**
+     * Get a ride request by validation token
+     * @param token The validation token String
+     * @return Optional containing the ride request entity if found
+     */
+    public Optional<RideRequest> getRideRequestByValidationToken(String token) {
+        return repository.findByValidationToken(token);
+    }
+    
+    /**
+     * Complete recipient validation via public web link
+     */
+    @Transactional
+    public String validateRecipientLocation(String token, Double latitude, Double longitude) {
+        RideRequest request = repository.findByValidationToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Demande introuvable ou jeton invalide"));
+                
+        if (request.getValidationStatus() != ValidationStatus.WAITING_RECIPIENT_VALIDATION) {
+            throw new IllegalStateException("Le statut de cette commande ne nécessite pas de validation destinataire.");
+        }
+        
+        // Update destination formatted as "lat,lng"
+        request.setDestination(latitude + "," + longitude);
+        
+        // Shift to READY_FOR_PICKUP
+        request.setValidationStatus(ValidationStatus.READY_FOR_PICKUP);
+        
+        RideRequest saved = repository.save(request);
+        
+        // Notify drivers that a new ride is available
+        notificationService.notifyDriversOfReadyRequest(saved);
+        
+        // Return qr code
+        return saved.getQrCodeDelivery();
     }
 
     /**
@@ -351,39 +400,76 @@ public class RideRequestService {
     }
 
     /**
-     * Validate delivery - transitions from IN_TRANSIT to COMPLETED
-     * @param requestId The ride request ID
-     * @param driverId The driver validating delivery (extracted from JWT)
-     * @param code The validation code to check against QR code delivery
+     * Validate delivery by scan - transitions from IN_TRANSIT to COMPLETED
      */
     @Transactional
-    public RideRequestDTO validateDelivery(Long requestId, Long driverId, String code) {
+    public RideRequestDTO validateDeliveryByScan(Long requestId, Long driverId, String code) {
         RideRequest request = repository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Ride request not found with ID: " + requestId));
         
-        // Validate driver is assigned to this request
         if (request.getChauffeur() == null || !request.getChauffeur().getId().equals(driverId)) {
             throw new IllegalStateException("Driver is not assigned to this ride request");
         }
         
-        // State machine validation: Must be in IN_TRANSIT state
         if (request.getValidationStatus() != ValidationStatus.IN_TRANSIT) {
             throw new IllegalStateException("Delivery can only be validated when status is IN_TRANSIT. Current status: " + request.getValidationStatus());
         }
         
-        // Validate code matches QR code delivery
         if (request.getQrCodeDelivery() == null || !request.getQrCodeDelivery().equals(code)) {
-            throw new IllegalArgumentException("Code incorrect");
+            throw new IllegalArgumentException("Code QR incorrect");
         }
         
-        // Transition: IN_TRANSIT → COMPLETED
         request.setValidationStatus(ValidationStatus.COMPLETED);
         
         RideRequest saved = repository.save(request);
-        
-        // TODO: Trigger completion logic (payment, rating, etc.)
-        
         return mapper.toDto(saved);
+    }
+
+    /**
+     * Validate delivery by phone number - transitions from IN_TRANSIT to COMPLETED
+     */
+    @Transactional
+    public RideRequestDTO validateDeliveryByPhone(Long requestId, Long driverId, String phone) {
+        RideRequest request = repository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Ride request not found with ID: " + requestId));
+                
+        if (request.getChauffeur() == null || !request.getChauffeur().getId().equals(driverId)) {
+            throw new IllegalStateException("Driver is not assigned to this ride request");
+        }
+        
+        if (request.getValidationStatus() != ValidationStatus.IN_TRANSIT) {
+            throw new IllegalStateException("Delivery can only be validated when status is IN_TRANSIT. Current status: " + request.getValidationStatus());
+        }
+        
+        // Find the correct recipient phone number
+        String recipientPhone = Boolean.TRUE.equals(request.getIsSenderClient()) 
+            ? request.getOtherPartyPhone() 
+            : (request.getClient() != null ? request.getClient().getPhone() : "");
+            
+        if (recipientPhone == null || recipientPhone.trim().isEmpty()) {
+            throw new IllegalArgumentException("Aucun numéro de téléphone destinataire enregistré pour cette course");
+        }
+        
+        // Clean both phone numbers from white spaces for a robust check
+        String cleanRecipient = recipientPhone.replaceAll("\\s+", "");
+        String cleanProvided = phone != null ? phone.replaceAll("\\s+", "") : "";
+        
+        if (!cleanRecipient.equals(cleanProvided)) {
+            throw new IllegalArgumentException("Numéro de téléphone incorrect");
+        }
+        
+        request.setValidationStatus(ValidationStatus.COMPLETED);
+        
+        RideRequest saved = repository.save(request);
+        return mapper.toDto(saved);
+    }
+    
+    /**
+     * Legacy method for backward compatibility
+     */
+    @Transactional
+    public RideRequestDTO validateDelivery(Long requestId, Long driverId, String code) {
+        return validateDeliveryByScan(requestId, driverId, code);
     }
 
     /**
@@ -548,6 +634,7 @@ public class RideRequestService {
 
         // Sécurité : On ne peut annuler que si aucun chauffeur n'a accepté
         if (request.getValidationStatus() != ValidationStatus.READY_FOR_PICKUP &&
+                request.getValidationStatus() != ValidationStatus.WAITING_RECIPIENT_VALIDATION &&
                 request.getValidationStatus() != ValidationStatus.WAITING_CLIENT_VALIDATION &&
                 request.getValidationStatus() != ValidationStatus.WAITING_SUPPLIER_VALIDATION) {
             throw new IllegalStateException("Impossible d'annuler : la course a déjà été acceptée ou est en cours.");
@@ -572,6 +659,7 @@ public class RideRequestService {
 
         // Sécurité : On ne peut modifier que si aucun chauffeur n'a accepté
         if (request.getValidationStatus() != ValidationStatus.READY_FOR_PICKUP &&
+                request.getValidationStatus() != ValidationStatus.WAITING_RECIPIENT_VALIDATION &&
                 request.getValidationStatus() != ValidationStatus.WAITING_CLIENT_VALIDATION &&
                 request.getValidationStatus() != ValidationStatus.WAITING_SUPPLIER_VALIDATION) {
             throw new IllegalStateException("Impossible de modifier le prix : la course a déjà été acceptée ou est en cours.");
@@ -579,5 +667,40 @@ public class RideRequestService {
 
         request.setPrice(newPrice);
         return mapper.toDto(repository.save(request));
+    }
+    
+    /**
+     * Obtenir le lien de validation pour le destinataire
+     */
+    @Transactional
+    public String getValidationLink(Long rideId, Long clientId, String baseUrl) {
+        RideRequest request = repository.findById(rideId)
+                .orElseThrow(() -> new IllegalArgumentException("Course introuvable avec l'ID: " + rideId));
+                
+        if (request.getClient() == null || !request.getClient().getId().equals(clientId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Vous n'êtes pas autorisé à obtenir ce lien.");
+        }
+
+        boolean missingDestination = request.getDestination() == null || request.getDestination().trim().isEmpty();
+        boolean terminalStatus = request.getValidationStatus() == ValidationStatus.COMPLETED ||
+                request.getValidationStatus() == ValidationStatus.CANCELED;
+        boolean canAskRecipient = request.getValidationStatus() == ValidationStatus.WAITING_RECIPIENT_VALIDATION ||
+                (missingDestination && request.getChauffeur() == null && !terminalStatus);
+
+        if (!canAskRecipient) {
+            throw new IllegalStateException("Le statut de cette course ne permet pas l'envoi d'un lien de validation.");
+        }
+
+        if (request.getValidationStatus() != ValidationStatus.WAITING_RECIPIENT_VALIDATION) {
+            request.setValidationStatus(ValidationStatus.WAITING_RECIPIENT_VALIDATION);
+        }
+
+        if (request.getValidationToken() == null || request.getValidationToken().isBlank()) {
+            request.setValidationToken(UUID.randomUUID().toString());
+        }
+
+        repository.save(request);
+
+        return baseUrl + "/validate.html?token=" + request.getValidationToken();
     }
 }

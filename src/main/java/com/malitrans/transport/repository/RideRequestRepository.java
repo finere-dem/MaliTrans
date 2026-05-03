@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RideRequestRepository extends JpaRepository<RideRequest, Long> {
     // Legacy methods (kept for backward compatibility, but deprecated)
@@ -28,6 +29,8 @@ public interface RideRequestRepository extends JpaRepository<RideRequest, Long> 
     List<RideRequest> findBySupplierOrderByCreatedAtDesc(Utilisateur supplier);
     List<RideRequest> findByChauffeurOrderByCreatedAtDesc(Utilisateur chauffeur);
     List<RideRequest> findByValidationStatusOrderByCreatedAtDesc(ValidationStatus validationStatus);
+    
+    Optional<RideRequest> findByValidationToken(String validationToken);
     
     /**
      * Find all ride requests for a driver with status COMPLETED or CANCELED,

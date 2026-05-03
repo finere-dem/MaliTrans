@@ -11,29 +11,26 @@ import com.malitrans.transport.service.FcmService;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 
 /**
- * Implémentation du service FCM.
- * Charge les credentials Firebase au démarrage (12-Factor / Cloud-Native) :
- * - En production (Koyeb, etc.) : variable d'environnement FIREBASE_JSON
- * (contenu du JSON).
- * - En local : fichier classpath service-account.json.
- * Les erreurs d'envoi sont loguées sans faire crasher l'application.
- */
-@Service
+ * Implementation du service FCM.
+ * Charge les credentials Firebase depuis l'environnement:
+ * - FIREBASE_JSON: contenu JSON complet du service account.
+ * - GOOGLE_APPLICATION_CREDENTIALS: chemin vers un fichier local hors repo.
+ * Les erreurs d'envoi sont loguees sans faire crasher l'application.
+ */@Service
 public class FcmServiceImpl implements FcmService {
 
     private static final Logger logger = LoggerFactory.getLogger(FcmServiceImpl.class);
-
-    private static final String SERVICE_ACCOUNT_RESOURCE = "service-account.json";
 
     private boolean firebaseInitialized = false;
 
@@ -45,9 +42,18 @@ public class FcmServiceImpl implements FcmService {
             return;
         }
         String firebaseJson = System.getenv("FIREBASE_JSON");
+        String credentialsPath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
+
+        if ((firebaseJson == null || firebaseJson.isBlank())
+                && (credentialsPath == null || credentialsPath.isBlank())) {
+            logger.warn("Firebase credentials missing. Set FIREBASE_JSON or GOOGLE_APPLICATION_CREDENTIALS. FCM will be disabled.");
+            firebaseInitialized = false;
+            return;
+        }
+
         try (InputStream inputStream = (firebaseJson != null && !firebaseJson.isBlank())
                 ? new ByteArrayInputStream(firebaseJson.getBytes(StandardCharsets.UTF_8))
-                : new ClassPathResource(SERVICE_ACCOUNT_RESOURCE).getInputStream()) {
+                : Files.newInputStream(Path.of(credentialsPath))) {
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(inputStream))
                     .build();
@@ -56,11 +62,10 @@ public class FcmServiceImpl implements FcmService {
             if (firebaseJson != null && !firebaseJson.isBlank()) {
                 logger.info("Firebase App initialized successfully from FIREBASE_JSON env var");
             } else {
-                logger.info("Firebase App initialized successfully from classpath {}", SERVICE_ACCOUNT_RESOURCE);
+                logger.info("Firebase App initialized successfully from GOOGLE_APPLICATION_CREDENTIALS");
             }
         } catch (IOException e) {
-            logger.warn("Could not load Firebase credentials (FIREBASE_JSON or {}). FCM will be disabled. {}",
-                    SERVICE_ACCOUNT_RESOURCE, e.getMessage());
+            logger.warn("Could not load Firebase credentials. FCM will be disabled. {}", e.getMessage());
             firebaseInitialized = false;
         }
     }

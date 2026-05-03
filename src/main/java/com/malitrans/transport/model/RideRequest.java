@@ -38,12 +38,17 @@ public class RideRequest {
     private String packageDescription; // Description du colis à livrer
     private Boolean isSenderClient; // true si le Client envoie, false si le Client reçoit
 
+    private String validationToken; // Token pour URL de validation par le destinataire
+
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (validationToken == null) {
+            validationToken = java.util.UUID.randomUUID().toString();
         }
     }
 
@@ -174,5 +179,13 @@ public class RideRequest {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getValidationToken() {
+        return validationToken;
+    }
+
+    public void setValidationToken(String validationToken) {
+        this.validationToken = validationToken;
     }
 }

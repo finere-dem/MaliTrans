@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
@@ -78,6 +79,29 @@ public class RideRequestController {
         return service.getRideRequestById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @Operation(summary = "Obtenir le lien de validation", 
+               description = "Retourne le lien complet pour valider la destination. Accessible au client ayant créé la course.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(responseCode = "403", description = "Accès refusé")
+    })
+    @PreAuthorize("hasAuthority('CLIENT')")
+    @GetMapping("/{id}/validation-link")
+    public ResponseEntity<?> getValidationLink(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            Long clientId = SecurityUtil.getCurrentUserId();
+            // Construire l'URL de base
+            String baseUrl = buildExternalBaseUrl(request);
+            
+            String link = service.getValidationLink(id, clientId, baseUrl);
+            return ResponseEntity.ok(java.util.Map.of("link", link, "validationLink", link));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(java.util.Map.of("error", e.getMessage()));
+        }
     }
 
     @Operation(summary = "Assigner un chauffeur à une demande (First-Come-First-Served)", 
@@ -171,8 +195,8 @@ public class RideRequestController {
         }
     }
 
-    @Operation(summary = "Valider la livraison (Delivery)", 
-               description = "Valide la livraison du colis avec un code. " +
+    @Operation(summary = "Valider la livraison par scan (Delivery)", 
+               description = "Valide la livraison du colis avec un QR code scanné. " +
                            "Transition: IN_TRANSIT → COMPLETED. " +
                            "driverId est automatiquement extrait du JWT.")
     @ApiResponses({
@@ -182,19 +206,43 @@ public class RideRequestController {
         @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
     })
     @PreAuthorize("hasAuthority('CHAUFFEUR')")
-    @PostMapping("/{id}/delivery")
-    public ResponseEntity<?> validateDelivery(@PathVariable Long id, @RequestBody ValidateCodeDTO request) {
+    @PostMapping("/{id}/complete-scan")
+    public ResponseEntity<?> validateDeliveryByScan(@PathVariable Long id, @RequestBody ValidateCodeDTO request) {
         try {
-            // SECURITY: Extract driver ID from JWT (Zero Trust)
             Long driverId = SecurityUtil.getCurrentUserId();
-            
-            // Verify user is actually a driver
             com.malitrans.transport.model.Utilisateur currentUser = SecurityUtil.getCurrentUser();
             if (currentUser.getRole() != com.malitrans.transport.model.Role.CHAUFFEUR) {
                 throw new AccessDeniedException("Only drivers can validate delivery");
             }
-            
-            return ResponseEntity.ok(service.validateDelivery(id, driverId, request.getCode()));
+            return ResponseEntity.ok(service.validateDeliveryByScan(id, driverId, request.getCode()));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(403).body(java.util.Map.of("error", e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Valider la livraison par téléphone (Delivery)", 
+               description = "Valide la livraison du colis avec le numéro de téléphone du destinataire. " +
+                           "Transition: IN_TRANSIT → COMPLETED. " +
+                           "driverId est automatiquement extrait du JWT.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Livraison validée avec succès"),
+        @ApiResponse(responseCode = "404", description = "Demande non trouvée"),
+        @ApiResponse(responseCode = "400", description = "Numéro incorrect, statut invalide ou chauffeur non assigné"),
+        @ApiResponse(responseCode = "403", description = "Accès refusé - doit être un chauffeur")
+    })
+    @PreAuthorize("hasAuthority('CHAUFFEUR')")
+    @PostMapping("/{id}/complete-phone")
+    public ResponseEntity<?> validateDeliveryByPhone(@PathVariable Long id, @RequestBody ValidateCodeDTO request) {
+        try {
+            Long driverId = SecurityUtil.getCurrentUserId();
+            com.malitrans.transport.model.Utilisateur currentUser = SecurityUtil.getCurrentUser();
+            if (currentUser.getRole() != com.malitrans.transport.model.Role.CHAUFFEUR) {
+                throw new AccessDeniedException("Only drivers can validate delivery");
+            }
+            // Uses request.getCode() which contains the phone number
+            return ResponseEntity.ok(service.validateDeliveryByPhone(id, driverId, request.getCode()));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
         } catch (AccessDeniedException e) {
@@ -327,5 +375,32 @@ public class RideRequestController {
         } catch (AccessDeniedException e) {
             return ResponseEntity.status(403).body(java.util.Map.of("error", e.getMessage()));
         }
+    }
+
+    private String buildExternalBaseUrl(HttpServletRequest request) {
+        String forwardedProto = firstHeaderValue(request.getHeader("X-Forwarded-Proto"));
+        String forwardedHost = firstHeaderValue(request.getHeader("X-Forwarded-Host"));
+
+        String scheme = forwardedProto != null ? forwardedProto : request.getScheme();
+        String host = forwardedHost != null ? forwardedHost : request.getServerName();
+
+        if (forwardedHost == null) {
+            int port = request.getServerPort();
+            boolean defaultPort = ("http".equalsIgnoreCase(scheme) && port == 80)
+                    || ("https".equalsIgnoreCase(scheme) && port == 443);
+            if (!defaultPort) {
+                host = host + ":" + port;
+            }
+        }
+
+        return scheme + "://" + host + request.getContextPath();
+    }
+
+    private String firstHeaderValue(String headerValue) {
+        if (headerValue == null || headerValue.isBlank()) {
+            return null;
+        }
+
+        return headerValue.split(",")[0].trim();
     }
 }

@@ -12,7 +12,6 @@ public class RideRequestDTO {
     private String flowType; // "CLIENT_INITIATED" or "SUPPLIER_INITIATED"
     private String validationStatus; // ValidationStatus enum as String
     private String qrCodePickup;
-    private String qrCodeDelivery;
     private Double price;
     private String otherPartyName; // Nom de l'autre partie (Recipient si isSenderClient=true, Sender/Supplier si
                                    // false)
@@ -91,14 +90,6 @@ public class RideRequestDTO {
 
     public void setQrCodePickup(String qrCodePickup) {
         this.qrCodePickup = qrCodePickup;
-    }
-
-    public String getQrCodeDelivery() {
-        return qrCodeDelivery;
-    }
-
-    public void setQrCodeDelivery(String qrCodeDelivery) {
-        this.qrCodeDelivery = qrCodeDelivery;
     }
 
     public Double getPrice() {

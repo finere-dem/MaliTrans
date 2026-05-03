@@ -3,6 +3,7 @@ package com.malitrans.transport.model;
 
 
 public enum ValidationStatus {
+    WAITING_RECIPIENT_VALIDATION,  // En attente de position du destinataire
     WAITING_SUPPLIER_VALIDATION,   // Legacy (à garder pour l'instant)
     WAITING_CLIENT_VALIDATION,
     READY_FOR_PICKUP,              // Prêt pour la collecte
