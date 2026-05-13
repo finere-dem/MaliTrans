@@ -9,6 +9,11 @@ import com.malitrans.transport.model.RideRequest;
 import com.malitrans.transport.model.Utilisateur;
 import com.malitrans.transport.model.ValidationStatus;
 import com.malitrans.transport.repository.RideRequestRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +21,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,19 +37,26 @@ import java.util.stream.Collectors;
 @Service
 public class RideRequestService {
 
+    private static final Logger logger = LoggerFactory.getLogger(RideRequestService.class);
+
     private final RideRequestRepository repository;
     private final UtilisateurService utilisateurService;
     private final RideRequestMapper mapper;
     private final NotificationService notificationService;
+    private final String googleMapsApiKey;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public RideRequestService(RideRequestRepository repository, 
                              UtilisateurService utilisateurService, 
                              RideRequestMapper mapper,
-                             NotificationService notificationService) {
+                             NotificationService notificationService,
+                             @Value("${google.maps.api-key:}") String googleMapsApiKey) {
         this.repository = repository;
         this.utilisateurService = utilisateurService;
         this.mapper = mapper;
         this.notificationService = notificationService;
+        this.googleMapsApiKey = googleMapsApiKey != null ? googleMapsApiKey.trim() : "";
     }
 
     /**
@@ -194,8 +213,8 @@ public class RideRequestService {
             throw new IllegalStateException("Le statut de cette commande ne nécessite pas de validation destinataire.");
         }
         
-        // Update destination formatted as "lat,lng"
-        request.setDestination(latitude + "," + longitude);
+        // Store a readable address when possible, with coordinates as a safe fallback.
+        request.setDestination(resolveAddressFromCoordinates(latitude, longitude));
         
         // Shift to READY_FOR_PICKUP
         request.setValidationStatus(ValidationStatus.READY_FOR_PICKUP);
@@ -207,6 +226,54 @@ public class RideRequestService {
         
         // Return qr code
         return saved.getQrCodeDelivery();
+    }
+
+    private String resolveAddressFromCoordinates(Double latitude, Double longitude) {
+        String fallback = formatCoordinates(latitude, longitude);
+        if (googleMapsApiKey.isBlank()) {
+            logger.warn("GOOGLE_MAPS_API_KEY is missing; keeping destination as coordinates");
+            return fallback;
+        }
+
+        try {
+            String latLng = latitude + "," + longitude;
+            String encodedLatLng = URLEncoder.encode(latLng, StandardCharsets.UTF_8);
+            String encodedKey = URLEncoder.encode(googleMapsApiKey, StandardCharsets.UTF_8);
+            URI uri = URI.create(
+                    "https://maps.googleapis.com/maps/api/geocode/json?latlng="
+                            + encodedLatLng
+                            + "&language=fr&key="
+                            + encodedKey);
+
+            HttpRequest httpRequest = HttpRequest.newBuilder(uri)
+                    .timeout(Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                logger.warn("Google reverse geocoding failed with HTTP status {}", response.statusCode());
+                return fallback;
+            }
+
+            JsonNode root = objectMapper.readTree(response.body());
+            String status = root.path("status").asText();
+            JsonNode results = root.path("results");
+            if (!"OK".equals(status) || !results.isArray() || results.isEmpty()) {
+                logger.warn("Google reverse geocoding returned status {}", status);
+                return fallback;
+            }
+
+            String formattedAddress = results.get(0).path("formatted_address").asText("").trim();
+            return formattedAddress.isEmpty() ? fallback : formattedAddress;
+        } catch (Exception e) {
+            logger.warn("Unable to reverse geocode recipient location: {}", e.getMessage());
+            return fallback;
+        }
+    }
+
+    private String formatCoordinates(Double latitude, Double longitude) {
+        return latitude + "," + longitude;
     }
 
     /**
