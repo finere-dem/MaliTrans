@@ -205,7 +205,7 @@ public class RideRequestService {
      * Complete recipient validation via public web link
      */
     @Transactional
-    public String validateRecipientLocation(String token, Double latitude, Double longitude) {
+    public RideRequest validateRecipientLocation(String token, Double latitude, Double longitude) {
         RideRequest request = repository.findByValidationToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Demande introuvable ou jeton invalide"));
                 
@@ -215,6 +215,12 @@ public class RideRequestService {
         
         // Store a readable address when possible, with coordinates as a safe fallback.
         request.setDestination(resolveAddressFromCoordinates(latitude, longitude));
+        if (request.getQrCodeDelivery() == null || request.getQrCodeDelivery().isBlank()) {
+            request.setQrCodeDelivery(generateQrCode());
+        }
+        if (request.getQrCodePickup() == null || request.getQrCodePickup().isBlank()) {
+            request.setQrCodePickup(generateQrCode());
+        }
         
         // Shift to READY_FOR_PICKUP
         request.setValidationStatus(ValidationStatus.READY_FOR_PICKUP);
@@ -224,8 +230,7 @@ public class RideRequestService {
         // Notify drivers that a new ride is available
         notificationService.notifyDriversOfReadyRequest(saved);
         
-        // Return qr code
-        return saved.getQrCodeDelivery();
+        return saved;
     }
 
     private String resolveAddressFromCoordinates(Double latitude, Double longitude) {

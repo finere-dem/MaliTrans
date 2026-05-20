@@ -15,7 +15,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -42,22 +41,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow specific origins: Koyeb production URL and localhost for development
-        configuration.setAllowedOrigins(Arrays.asList(
-                "https://faithful-kamillah-woyo-62a37bc3.koyeb.app",
-
-                "http://localhost:3000",
-                "http://localhost:8080",
-                "http://localhost:5173", // Vite default port
-                "http://127.0.0.1:3000",
-                "http://127.0.0.1:8080",
-                "http://127.0.0.1:5173"));
-
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*")); // Allow all headers
         configuration.setAllowCredentials(true); // Enable credentials for cookies/auth headers
         configuration.setMaxAge(3600L); // Cache preflight requests for 1 hour
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type")); // Expose headers to client
+        configuration.setExposedHeaders(List.of("Authorization", "Content-Type")); // Expose headers to client
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

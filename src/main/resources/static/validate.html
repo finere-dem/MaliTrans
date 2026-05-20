@@ -3,50 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Woyo - Validation de Livraison</title>
+    <title>Woyo - Validation et suivi</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
         :root {
-            --primary: #4F46E5;
-            --primary-dark: #4338CA;
-            --secondary: #10B981;
-            --dark: #1F2937;
-            --light: #F9FAFB;
-            --white: #FFFFFF;
-            --gray: #6B7280;
-            --red: #EF4444;
+            --primary: #20258a;
+            --primary-dark: #181c73;
+            --secondary: #10b981;
+            --dark: #1f2937;
+            --light: #f7f8fb;
+            --white: #ffffff;
+            --gray: #6b7280;
+            --border: #e5e7eb;
+            --red: #ef4444;
+            --orange: #f59e0b;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
         }
 
         body {
-            background-color: var(--light);
+            background: var(--light);
             color: var(--dark);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             padding: 20px;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
         }
 
         .card {
             background: var(--white);
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-            width: 100%;
-            max-width: 450px;
-            padding: 30px;
-            text-align: center;
-            animation: fadeIn 0.5s ease-out;
+            border-radius: 18px;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+            padding: 26px;
+            animation: fadeIn 0.35s ease-out;
+        }
+
+        .card + .card {
+            margin-top: 18px;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(14px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -54,21 +62,34 @@
             font-size: 28px;
             font-weight: 800;
             color: var(--primary);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             letter-spacing: 1px;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .lead {
+            color: var(--gray);
+            font-size: 15px;
+            line-height: 1.55;
+            margin-bottom: 20px;
         }
 
         .package-info {
             background: var(--light);
-            padding: 20px;
+            padding: 18px;
             border-radius: 12px;
-            margin-bottom: 25px;
-            text-align: left;
-            border: 1px solid #E5E7EB;
+            margin-bottom: 22px;
+            border: 1px solid var(--border);
         }
 
         .info-row {
-            margin-bottom: 15px;
+            margin-bottom: 14px;
         }
 
         .info-row:last-child {
@@ -76,31 +97,32 @@
         }
 
         .info-label {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--gray);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .info-value {
             font-size: 16px;
             color: var(--dark);
-            font-weight: 500;
+            font-weight: 550;
             margin-top: 4px;
+            word-break: break-word;
         }
 
         .btn {
             background: var(--primary);
             color: var(--white);
             border: none;
-            padding: 16px 24px;
+            padding: 15px 22px;
             width: 100%;
             border-radius: 12px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -109,45 +131,37 @@
 
         .btn:hover {
             background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-        }
-
-        .btn:active {
-            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(32, 37, 138, 0.25);
         }
 
         .btn:disabled {
             background: var(--gray);
             cursor: not-allowed;
-            transform: none;
             box-shadow: none;
         }
 
         #qr-container {
             display: none;
-            margin-top: 30px;
-            padding-top: 25px;
-            border-top: 2px dashed #E5E7EB;
+            padding-top: 6px;
         }
 
         #qrcode {
             display: flex;
             justify-content: center;
-            margin: 20px 0;
-            padding: 15px;
+            margin: 18px 0;
+            padding: 14px;
             background: white;
-            border-radius: 10px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
         }
-        
-        #qrcode img {
-            max-width: 100%;
-            height: auto;
+
+        #qrcode:empty {
+            display: none;
         }
 
         .success-text {
             color: var(--secondary);
-            font-weight: 600;
+            font-weight: 800;
             font-size: 18px;
             margin-bottom: 10px;
             display: flex;
@@ -159,21 +173,22 @@
         .instruction {
             color: var(--gray);
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.55;
+            text-align: center;
         }
 
         .alert {
-            background: #FEE2E2;
+            background: #fee2e2;
             color: var(--red);
-            padding: 15px;
+            padding: 14px;
             border-radius: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             font-size: 14px;
             display: none;
         }
-        
+
         .loader {
-            border: 3px solid rgba(255,255,255,0.3);
+            border: 3px solid rgba(255, 255, 255, 0.35);
             border-radius: 50%;
             border-top: 3px solid white;
             width: 20px;
@@ -181,61 +196,168 @@
             animation: spin 1s linear infinite;
             display: none;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        #tracking-container {
+            display: none;
+        }
+
+        .tracking-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            align-items: flex-start;
+            margin-bottom: 14px;
+        }
+
+        .tracking-title {
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .tracking-subtitle {
+            color: var(--gray);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid #fed7aa;
+            background: #fff7ed;
+            color: #9a3412;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .status-badge.connected {
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+            color: #166534;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--orange);
+        }
+
+        .status-badge.connected .status-dot {
+            background: var(--secondary);
+        }
+
+        #map {
+            width: 100%;
+            height: 320px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: #eef2f7;
+        }
+
+        .tracking-note {
+            margin-top: 12px;
+            color: var(--gray);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 560px) {
+            body { padding: 12px; }
+            .card { padding: 20px; border-radius: 16px; }
+            .tracking-header { flex-direction: column; }
+            .status-badge { white-space: normal; }
+            #map { height: 280px; }
+        }
     </style>
 </head>
 <body>
-
-    <div class="card">
-        <div class="logo">WOYO</div>
-        
-        <div id="error-alert" class="alert"></div>
-
-        <div id="step-1">
-            <h2 style="font-size: 20px; margin-bottom: 20px;">Validation de votre livraison</h2>
-            <p style="color: var(--gray); font-size: 15px; margin-bottom: 20px; text-align: left;">
-                Un colis est en route pour vous. Pour qu'un chauffeur puisse vous l'apporter, nous avons besoin de votre adresse de réception exacte.
-            </p>
+    <div class="page">
+        <div class="card">
+            <div class="logo">WOYO</div>
+            <div id="error-alert" class="alert"></div>
 
             <div class="package-info">
                 <div class="info-row">
-                    <div class="info-label">Expéditeur</div>
+                    <div class="info-label">Expediteur</div>
                     <div class="info-value" id="val-sender">Chargement...</div>
                 </div>
                 <div class="info-row">
-                    <div class="info-label">Contenu</div>
+                    <div class="info-label">Destinataire</div>
+                    <div class="info-value" id="val-recipient">Chargement...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Description du colis</div>
                     <div class="info-value" id="val-desc">Chargement...</div>
                 </div>
                 <div class="info-row">
-                    <div class="info-label">Ville de départ</div>
+                    <div class="info-label">Cout de livraison</div>
+                    <div class="info-value" id="val-price">Chargement...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Depart</div>
                     <div class="info-value" id="val-origin">Chargement...</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Destination</div>
+                    <div class="info-value" id="val-destination">A confirmer</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">Statut</div>
+                    <div class="info-value" id="val-public-status">Chargement...</div>
                 </div>
             </div>
 
-            <button id="validate-btn" class="btn" onclick="requestLocation()">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Partager ma position GPS
-                <div id="btn-loader" class="loader"></div>
-            </button>
-            <p style="font-size: 12px; color: var(--gray); margin-top: 15px;">
-                Votre position restera strictement confidentielle et ne servira qu'au livreur Woyo.
-            </p>
+            <div id="step-1">
+                <h2>Validation de votre livraison</h2>
+                <p class="lead">
+                    Un colis est en route pour vous. Pour qu'un livreur puisse vous l'apporter,
+                    nous avons besoin de votre adresse de reception exacte.
+                </p>
+
+                <button id="validate-btn" class="btn" onclick="requestLocation()">
+                    <span>Partager ma position GPS</span>
+                    <div id="btn-loader" class="loader"></div>
+                </button>
+                <p class="tracking-note">
+                    Votre position restera strictement confidentielle et ne servira qu'au livreur Woyo.
+                </p>
+            </div>
+
+            <div id="qr-container">
+                <div class="success-text">Position confirmee</div>
+                <p class="instruction">
+                    Conservez ce code QR ou gardez cette page ouverte.
+                    Le livreur le scannera lors de la remise de votre colis.
+                </p>
+                <div id="qrcode"></div>
+            </div>
         </div>
 
-        <div id="qr-container">
-            <div class="success-text">
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Position confirmée !
+        <div id="tracking-container" class="card">
+            <div class="tracking-header">
+                <div>
+                    <div class="tracking-title">Suivi du livreur</div>
+                    <div class="tracking-subtitle">Course #<span id="display-ride-id">...</span></div>
+                </div>
+                <div id="tracking-badge" class="status-badge">
+                    <span class="status-dot"></span>
+                    <span id="tracking-status">En attente...</span>
+                </div>
             </div>
-            <p class="instruction">
-                Conservez précieusement ce code QR ou gardez cette page ouverte. 
-                <strong>Le livreur le scannera</strong> lors de la remise de votre colis.
+            <div id="map"></div>
+            <p id="tracking-note" class="tracking-note">
+                La position du livreur apparaitra ici des que le suivi GPS sera actif.
             </p>
-            <div id="qrcode"></div>
         </div>
     </div>
 
@@ -243,66 +365,114 @@
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const apiBaseUrl = '/api/public/validate';
-        
+        const trackingWsUrl = '/api/ws-tracking';
+        const bamako = { lat: 12.6392, lng: -8.0029 };
+
         const errorAlert = document.getElementById('error-alert');
         const validateBtn = document.getElementById('validate-btn');
         const btnLoader = document.getElementById('btn-loader');
-        
+        const stepOne = document.getElementById('step-1');
+        const qrContainer = document.getElementById('qr-container');
+        const qrcode = document.getElementById('qrcode');
+        const trackingContainer = document.getElementById('tracking-container');
+        const trackingStatus = document.getElementById('tracking-status');
+        const trackingBadge = document.getElementById('tracking-badge');
+        const trackingNote = document.getElementById('tracking-note');
+
+        let currentRideId = null;
+        let map = null;
+        let driverMarker = null;
+        let routePath = null;
+        let routeCoords = [];
+        let stompClient = null;
+        let pollingTimer = null;
+        let mapsPromise = null;
+
         function showError(message) {
             errorAlert.innerText = message;
             errorAlert.style.display = 'block';
         }
 
-        // Fetch Initial Package Info
+        function clearError() {
+            errorAlert.style.display = 'none';
+            errorAlert.innerText = '';
+        }
+
         async function fetchPackageInfo() {
             if (!token) {
-                showError("Lien invalide ou expiré : Aucun token trouvé.");
+                showError('Lien invalide ou expire : aucun token trouve.');
                 validateBtn.disabled = true;
                 return;
             }
 
             try {
-                const response = await fetch(`${apiBaseUrl}/${token}`);
+                const response = await fetch(`${apiBaseUrl}/${token}`, { cache: 'no-store' });
                 const data = await response.json();
-                
-                if (response.status === 409) {
-                    showError("Cette commande a déjà été validée. En attente de livraison !");
-                    validateBtn.disabled = true;
-                    // Note: If we had stored the QR in local storage, we could show it here.
-                    // For now, we just block re-validation to prevent spam.
-                    return;
-                }
-                
+
                 if (!response.ok) {
-                    throw new Error(data.error || "Impossible de charger les informations.");
+                    throw new Error(data.error || 'Impossible de charger les informations.');
                 }
 
-                document.getElementById('val-sender').innerText = data.senderName;
-                document.getElementById('val-desc').innerText = data.packageDescription;
-                document.getElementById('val-origin').innerText = data.origin;
-                
+                hydratePackageInfo(data);
+
+                if (data.canValidateLocation) {
+                    stepOne.style.display = 'block';
+                } else {
+                    stepOne.style.display = 'none';
+                    showQrCode(data.qrCodeDelivery);
+                    startTracking(data);
+                }
             } catch (error) {
                 showError(error.message);
                 validateBtn.disabled = true;
             }
         }
 
-        // Request Location and POST
+        function hydratePackageInfo(data) {
+            document.getElementById('val-sender').innerText = data.senderName || 'Woyo Client';
+            document.getElementById('val-recipient').innerText = data.recipientName || 'Destinataire';
+            document.getElementById('val-desc').innerText = data.packageDescription || 'Colis sans description';
+            document.getElementById('val-price').innerText = formatPrice(data.price);
+            document.getElementById('val-origin').innerText = data.origin || 'Adresse de depart non renseignee';
+            document.getElementById('val-destination').innerText = data.destination ||
+                (data.canValidateLocation ? 'A confirmer apres partage GPS' : 'Destination non renseignee');
+            document.getElementById('val-public-status').innerText = formatStatus(data.validationStatus, data.canValidateLocation);
+        }
+
+        function formatPrice(price) {
+            const amount = Number(price);
+            if (!Number.isFinite(amount)) {
+                return 'Prix non renseigne';
+            }
+            return new Intl.NumberFormat('fr-FR', {
+                maximumFractionDigits: 0
+            }).format(amount) + ' FCFA';
+        }
+
+        function formatStatus(status, canValidateLocation) {
+            if (canValidateLocation) return 'En attente de votre adresse';
+            if (status === 'READY_FOR_PICKUP') return 'Adresse confirmee, en attente du livreur';
+            if (status === 'DRIVER_ACCEPTED') return 'Livreur assigne';
+            if (status === 'IN_TRANSIT' || status === 'IN_PROGRESS') return 'Livreur en route vers vous';
+            if (status === 'COMPLETED') return 'Livraison terminee';
+            if (status === 'CANCELED') return 'Course annulee';
+            return 'Statut en cours';
+        }
+
         function requestLocation() {
             if (!navigator.geolocation) {
-                showError("La géolocalisation n'est pas supportée par votre navigateur.");
+                showError("La geolocalisation n'est pas supportee par votre navigateur.");
                 return;
             }
 
-            // UI Loading state
             validateBtn.disabled = true;
-            validateBtn.childNodes[1].textContent = "Recherche GPS en cours...";
+            validateBtn.querySelector('span').textContent = 'Recherche GPS en cours...';
             btnLoader.style.display = 'block';
-            errorAlert.style.display = 'none';
+            clearError();
 
-            navigator.geolocation.getCurrentPosition(sendLocation, handleError, {
+            navigator.geolocation.getCurrentPosition(sendLocation, handleLocationError, {
                 enableHighAccuracy: true,
-                timeout: 10000,
+                timeout: 12000,
                 maximumAge: 0
             });
         }
@@ -321,49 +491,257 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || "Erreur de validation");
+                    throw new Error(data.error || 'Erreur de validation');
                 }
 
-                // Success!
-                document.getElementById('step-1').style.display = 'none';
-                document.getElementById('qr-container').style.display = 'block';
-                
-                // Generate QR Code
-                new QRCode(document.getElementById("qrcode"), {
-                    text: data.qrCodeDelivery,
-                    width: 200,
-                    height: 200,
-                    colorDark : "#1F2937",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-
+                stepOne.style.display = 'none';
+                showQrCode(data.qrCodeDelivery);
+                startTracking(data);
             } catch (error) {
                 showError(error.message);
-                resetBtn();
+                resetButton();
             }
         }
 
-        function handleError(error) {
-            let msg = "Erreur GPS inconnue.";
-            if (error.code === 1) msg = "Vous avez refusé l'accès à la localisation GPS. C'est obligatoire pour recevoir votre colis.";
-            if (error.code === 2) msg = "Position GPS introuvable. Veuillez réessayer à l'extérieur.";
-            if (error.code === 3) msg = "Délai de recherche GPS dépassé.";
-            showError(msg);
-            resetBtn();
+        function handleLocationError(error) {
+            let message = 'Erreur GPS inconnue.';
+            if (error.code === 1) {
+                message = "Vous avez refuse l'acces a la localisation GPS. Elle est obligatoire pour recevoir votre colis.";
+            }
+            if (error.code === 2) {
+                message = 'Position GPS introuvable. Veuillez reessayer dans un endroit degage.';
+            }
+            if (error.code === 3) {
+                message = 'Delai de recherche GPS depasse.';
+            }
+            showError(message);
+            resetButton();
         }
 
-        function resetBtn() {
+        function resetButton() {
             validateBtn.disabled = false;
-            validateBtn.childNodes[1].textContent = " Réessayer / Partager position";
+            validateBtn.querySelector('span').textContent = 'Reessayer / Partager position';
             btnLoader.style.display = 'none';
         }
 
-        // Initialize
+        function showQrCode(qrText) {
+            qrContainer.style.display = 'block';
+            qrcode.innerHTML = '';
+            if (!qrText) {
+                return;
+            }
+            new QRCode(qrcode, {
+                text: qrText,
+                width: 200,
+                height: 200,
+                colorDark: '#1f2937',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        }
+
+        function startTracking(data) {
+            if (!data || !data.rideId) return;
+
+            currentRideId = data.rideId;
+            document.getElementById('display-ride-id').textContent = currentRideId;
+            trackingContainer.style.display = 'block';
+            updateTrackingState(data);
+
+            loadGoogleMapsScript()
+                .then(function () {
+                    initMapIfNeeded(data.lastLocation);
+                    if (data.lastLocation) {
+                        updateDriverPosition(data.lastLocation);
+                    }
+                    connectTracking(currentRideId);
+                })
+                .catch(function () {
+                    trackingNote.textContent = 'Impossible de charger la carte Google Maps pour le moment.';
+                });
+
+            startTrackingPolling();
+        }
+
+        function updateTrackingState(data) {
+            const status = data.validationStatus || '';
+            const driverAssigned = Boolean(data.driverAssigned);
+            let label = 'En attente du livreur';
+
+            if (status === 'READY_FOR_PICKUP') {
+                label = driverAssigned ? 'Livreur assigne' : 'En attente d'un livreur';
+            } else if (status === 'DRIVER_ACCEPTED') {
+                label = 'Livreur assigne';
+            } else if (status === 'IN_TRANSIT' || status === 'IN_PROGRESS') {
+                label = 'Livreur en route vers vous';
+            } else if (status === 'COMPLETED') {
+                label = 'Livraison terminee';
+            } else if (status === 'CANCELED') {
+                label = 'Course annulee';
+            }
+
+            const terminal = status === 'COMPLETED' || status === 'CANCELED';
+            const hasLiveSignal = status === 'IN_TRANSIT' || status === 'IN_PROGRESS' || Boolean(data.lastLocation);
+            trackingStatus.textContent = label;
+            trackingBadge.classList.toggle('connected', !terminal && hasLiveSignal);
+
+            if (terminal) {
+                stopTrackingPolling();
+                disconnectTracking();
+            }
+        }
+
+        function loadGoogleMapsScript() {
+            if (window.google && window.google.maps) {
+                return Promise.resolve();
+            }
+            if (mapsPromise) return mapsPromise;
+
+            mapsPromise = fetch('/api/config/maps-key', { cache: 'no-store' })
+                .then(function (res) {
+                    if (!res.ok) throw new Error('Maps key unavailable');
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (!data || !data.apiKey) throw new Error('Missing maps key');
+                    return new Promise(function (resolve, reject) {
+                        window.initRecipientTrackingMap = function () {
+                            resolve();
+                        };
+                        const script = document.createElement('script');
+                        script.id = 'google-maps-script';
+                        script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(data.apiKey) + '&callback=initRecipientTrackingMap';
+                        script.async = true;
+                        script.defer = true;
+                        script.onerror = reject;
+                        document.head.appendChild(script);
+                    });
+                });
+
+            return mapsPromise;
+        }
+
+        function initMapIfNeeded(lastLocation) {
+            if (map) return;
+            const initialPosition = lastLocation
+                ? { lat: Number(lastLocation.latitude), lng: Number(lastLocation.longitude) }
+                : bamako;
+
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: initialPosition,
+                zoom: lastLocation ? 15 : 12,
+                disableDefaultUI: false,
+                zoomControl: true,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: true
+            });
+
+            driverMarker = new google.maps.Marker({
+                position: initialPosition,
+                map: lastLocation ? map : null,
+                title: 'Livreur Woyo',
+                icon: {
+                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 46 46">' +
+                        '<circle cx="23" cy="23" r="20" fill="#20258a" stroke="white" stroke-width="4"/>' +
+                        '<text x="23" y="30" text-anchor="middle" font-size="19">🏍️</text>' +
+                        '</svg>'
+                    ),
+                    scaledSize: new google.maps.Size(46, 46),
+                    anchor: new google.maps.Point(23, 23)
+                }
+            });
+
+            routePath = new google.maps.Polyline({
+                path: routeCoords,
+                geodesic: true,
+                strokeColor: '#20258a',
+                strokeOpacity: 0.85,
+                strokeWeight: 4
+            });
+            routePath.setMap(map);
+        }
+
+        function connectTracking(rideId) {
+            if (!rideId || stompClient) return;
+
+            const socket = new SockJS(trackingWsUrl);
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+            stompClient.connect({}, function () {
+                stompClient.subscribe('/topic/ride/' + rideId, function (message) {
+                    const data = JSON.parse(message.body);
+                    updateDriverPosition(data);
+                    updateTrackingState({
+                        validationStatus: 'IN_TRANSIT',
+                        driverAssigned: true,
+                        lastLocation: data
+                    });
+                });
+            }, function () {
+                trackingStatus.textContent = 'Connexion suivi interrompue';
+                trackingBadge.classList.remove('connected');
+            });
+        }
+
+        function disconnectTracking() {
+            if (stompClient) {
+                stompClient.disconnect();
+                stompClient = null;
+            }
+        }
+
+        function updateDriverPosition(location) {
+            if (!location || !map || !driverMarker) return;
+
+            const pos = {
+                lat: Number(location.latitude),
+                lng: Number(location.longitude)
+            };
+
+            if (!Number.isFinite(pos.lat) || !Number.isFinite(pos.lng)) return;
+
+            driverMarker.setMap(map);
+            driverMarker.setPosition(pos);
+            map.panTo(pos);
+
+            routeCoords.push(pos);
+            routePath.setPath(routeCoords);
+
+            trackingNote.textContent = 'Derniere position recue : ' + new Date().toLocaleTimeString();
+        }
+
+        function startTrackingPolling() {
+            if (pollingTimer || !token) return;
+            pollingTimer = setInterval(fetchTrackingStatus, 10000);
+        }
+
+        function stopTrackingPolling() {
+            if (!pollingTimer) return;
+            clearInterval(pollingTimer);
+            pollingTimer = null;
+        }
+
+        async function fetchTrackingStatus() {
+            try {
+                const response = await fetch(`${apiBaseUrl}/${token}/tracking`, { cache: 'no-store' });
+                const data = await response.json();
+                if (!response.ok) return;
+                hydratePackageInfo(data);
+                updateTrackingState(data);
+                if (data.lastLocation) {
+                    updateDriverPosition(data.lastLocation);
+                }
+            } catch (_) {
+                // Keep the WebSocket connection alive; polling is only a status fallback.
+            }
+        }
+
         if (token) {
             fetchPackageInfo();
         } else {
-            showError("Lien invalide : paramètre token manquant.");
+            showError('Lien invalide : parametre token manquant.');
             validateBtn.disabled = true;
         }
     </script>

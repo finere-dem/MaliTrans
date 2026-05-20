@@ -7,11 +7,13 @@ import com.malitrans.transport.dto.RegisterDTO;
 import com.malitrans.transport.dto.VerifyRegistrationDTO;
 import com.malitrans.transport.exception.TokenRefreshException;
 import com.malitrans.transport.service.AuthService;
+import com.malitrans.transport.service.GoogleAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -22,9 +24,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final GoogleAuthService googleAuthService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, GoogleAuthService googleAuthService) {
         this.authService = authService;
+        this.googleAuthService = googleAuthService;
     }
 
     @Operation(summary = "Inscription (étape 1)", 
@@ -88,6 +92,28 @@ public class AuthController {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Invalid username or password");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        }
+    }
+
+    @Operation(summary = "Connexion avec Google",
+               description = "Verifie le Google ID token, cree le compte si besoin, puis renvoie un JWT Woyo.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Connexion Google reussie"),
+        @ApiResponse(responseCode = "401", description = "Token Google invalide")
+    })
+    @PostMapping("/google")
+    public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> request) {
+        try {
+            String idToken = request.get("idToken");
+            return ResponseEntity.ok(googleAuthService.authenticate(idToken));
+        } catch (BadCredentialsException | IllegalArgumentException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Connexion Google indisponible. Veuillez reessayer.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 

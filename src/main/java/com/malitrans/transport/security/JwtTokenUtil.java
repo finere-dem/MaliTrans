@@ -11,6 +11,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.List;
 
@@ -41,7 +44,7 @@ public class JwtTokenUtil {
                 .claim(ROLES_CLAIM, roles) // Add roles claim
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
-                .signWith(SignatureAlgorithm.HS512, secret)
+                .signWith(SignatureAlgorithm.HS512, getSigningKey())
                 .compact();
     }
 
@@ -97,10 +100,23 @@ public class JwtTokenUtil {
      * @return Claims object
      */
     private Claims getClaimsFromToken(String token) {
-        return Jwts.parser()
-                .setSigningKey(secret)
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
+    }
+
+    private byte[] getSigningKey() {
+        byte[] key = secret.getBytes(StandardCharsets.UTF_8);
+        if (key.length >= 64) {
+            return key;
+        }
+        try {
+            return MessageDigest.getInstance("SHA-512").digest(key);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-512 algorithm is not available", e);
+        }
     }
 
     /**

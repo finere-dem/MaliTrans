@@ -1,24 +1,21 @@
 package com.malitrans.transport.controller;
 
 import com.malitrans.transport.dto.LocationMessage;
+import com.malitrans.transport.service.TrackingService;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 @Controller
 public class TrackingController {
 
-    private final SimpMessagingTemplate messagingTemplate;
+    private final TrackingService trackingService;
 
-    public TrackingController(SimpMessagingTemplate messagingTemplate) {
-        this.messagingTemplate = messagingTemplate;
+    public TrackingController(TrackingService trackingService) {
+        this.trackingService = trackingService;
     }
 
     @MessageMapping("/driver/location")
     public void handleDriverLocation(LocationMessage message) {
-        // Rediffusion instantanée du message vers le topic de la course correspondante
-        // Les clients (ex: l'app client Flutter) s'abonneront à /topic/ride/{rideId}
-        String destination = "/topic/ride/" + message.getRideId();
-        messagingTemplate.convertAndSend(destination, message);
+        trackingService.publishDriverLocation(message);
     }
 }

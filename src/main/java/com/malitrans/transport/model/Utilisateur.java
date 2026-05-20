@@ -15,6 +15,7 @@ public class Utilisateur {
     private String lastName;
     private String phone; // Numéro de téléphone
     private String email; // Adresse email
+    private String googleId; // Identifiant Google OAuth (sub)
     private String vehicleType; // e.g., "Moto", "Voiture", "Camion"
     private Double rating; // Average rating from notes (0.0 to 5.0)
     @Column(length = 512)
@@ -152,6 +153,14 @@ public class Utilisateur {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getGoogleId() {
+        return googleId;
+    }
+
+    public void setGoogleId(String googleId) {
+        this.googleId = googleId;
     }
 
     public String getCompanyName() {
