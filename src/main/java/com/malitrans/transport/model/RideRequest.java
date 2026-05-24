@@ -34,7 +34,7 @@ public class RideRequest {
 
     private String otherPartyName; // Nom de l'autre partie (Recipient si isSenderClient=true, Sender/Supplier si
                                    // false)
-    private String oth erPartyPhone; // Téléphone de l'autre partie
+    private String otherPartyPhone; // Téléphone de l'autre partie
     private String packageDescription; // Description du colis à livrer
     private Boolean isSenderClient; // true si le Client envoie, false si le Client reçoit
 

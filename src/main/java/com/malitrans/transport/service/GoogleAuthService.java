@@ -32,6 +32,7 @@ public class GoogleAuthService {
     private final JwtTokenUtil jwtTokenUtil;
     private final RefreshTokenService refreshTokenService;
     private final String googleClientId;
+    private final GoogleIdTokenVerifier googleIdTokenVerifier;
 
     public GoogleAuthService(UtilisateurRepository utilisateurRepository,
                              PasswordEncoder passwordEncoder,
@@ -43,6 +44,7 @@ public class GoogleAuthService {
         this.jwtTokenUtil = jwtTokenUtil;
         this.refreshTokenService = refreshTokenService;
         this.googleClientId = googleClientId;
+        this.googleIdTokenVerifier = buildVerifier(googleClientId);
     }
 
     @Transactional
@@ -89,18 +91,29 @@ public class GoogleAuthService {
 
     private GoogleIdToken.Payload verify(String idTokenString) {
         try {
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
-                    GoogleNetHttpTransport.newTrustedTransport(),
-                    GsonFactory.getDefaultInstance())
-                    .setAudience(List.of(googleClientId))
-                    .build();
-            GoogleIdToken idToken = verifier.verify(idTokenString);
+            GoogleIdToken idToken = googleIdTokenVerifier.verify(idTokenString);
             if (idToken == null) {
                 throw new BadCredentialsException("Token Google invalide.");
             }
             return idToken.getPayload();
         } catch (GeneralSecurityException | IOException e) {
             throw new BadCredentialsException("Impossible de verifier le token Google.", e);
+        }
+    }
+
+    private GoogleIdTokenVerifier buildVerifier(String clientId) {
+        if (clientId == null || clientId.isBlank()) {
+            return null;
+        }
+
+        try {
+            return new GoogleIdTokenVerifier.Builder(
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    GsonFactory.getDefaultInstance())
+                    .setAudience(List.of(clientId))
+                    .build();
+        } catch (GeneralSecurityException | IOException e) {
+            throw new IllegalStateException("Impossible d'initialiser Google Sign-In.", e);
         }
     }
 

@@ -20,6 +20,17 @@ Ces variables **DOIVENT** être définies en production. Ne laissez jamais de va
 |----------|-------------|---------|-------------|
 | `JWT_SECRET` | Clé secrète pour signer et vérifier les tokens JWT (minimum 256 bits recommandé) | Généré avec `openssl rand -base64 32` | ✅ Oui |
 
+### Connexion Google
+
+| Variable | Description | Exemple | Obligatoire |
+|----------|-------------|---------|-------------|
+| `GOOGLE_CLIENT_ID` | Client ID Web OAuth Google. Doit etre identique au `GOOGLE_WEB_CLIENT_ID` utilise par l'app Flutter. | `987981475418-...apps.googleusercontent.com` | Oui |
+
+Pour Android, Firebase/Google Cloud doit aussi contenir un client OAuth Android
+pour le package `com.woyo.malitrans` avec les empreintes SHA-1/SHA-256 de debug
+et de release. Apres ajout des empreintes, telechargez le nouveau
+`google-services.json` et remplacez celui de `woyo_client/android/app/`.
+
 ## 🛠️ Configuration par défaut (développement local)
 
 Le fichier `application.properties` contient des valeurs par défaut pour faciliter le développement local. Ces valeurs **NE DOIVENT JAMAIS** être utilisées en production.
