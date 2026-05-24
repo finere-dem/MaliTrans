@@ -11,6 +11,8 @@ import com.malitrans.transport.service.GoogleAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -22,6 +24,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
     private final GoogleAuthService googleAuthService;
@@ -105,12 +109,15 @@ public class AuthController {
     public ResponseEntity<?> googleLogin(@RequestBody Map<String, String> request) {
         try {
             String idToken = request.get("idToken");
+            logger.info("Google login endpoint reached. idToken present: {}", idToken != null && !idToken.isBlank());
             return ResponseEntity.ok(googleAuthService.authenticate(idToken));
         } catch (BadCredentialsException | IllegalArgumentException e) {
+            logger.warn("Google login rejected: {}", e.getMessage());
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
         } catch (Exception e) {
+            logger.error("Google login failed unexpectedly", e);
             Map<String, String> error = new HashMap<>();
             error.put("error", "Connexion Google indisponible. Veuillez reessayer.");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
