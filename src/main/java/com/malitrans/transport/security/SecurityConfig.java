@@ -62,6 +62,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll() // Public endpoints: /auth/login, /auth/register,
                                                                  // /auth/refresh-token
                         .requestMatchers("/public/**").permitAll() // Public endpoints: /public/companies
+                        .requestMatchers("/health").permitAll() // Koyeb health check: /api/health
                         .requestMatchers("/ws-tracking/**").permitAll() // WebSockets tracking (pas de JWT)
                         .requestMatchers("/test-tracking.html", "/validate.html").permitAll() // Pages statiques
                         .requestMatchers("/config/maps-key").permitAll() // Clé API Google Maps public
