@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cahier Fonctionnel — Gestion de Flotte Web | MaliTrans</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      color: #1a1a2e;
+      background: #fff;
+      padding: 40px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    /* ── COVER PAGE ── */
+    .cover {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 90vh;
+      text-align: center;
+      page-break-after: always;
+      border: 3px solid #0d47a1;
+      border-radius: 12px;
+      padding: 60px 40px;
+      background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);
+    }
+    .cover-logo {
+      font-size: 48px;
+      font-weight: 900;
+      color: #0d47a1;
+      letter-spacing: 4px;
+      margin-bottom: 8px;
+    }
+    .cover-sub {
+      font-size: 16px;
+      color: #1565c0;
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+    .cover h1 {
+      font-size: 28px;
+      color: #0d47a1;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .cover h2 {
+      font-size: 18px;
+      color: #1976d2;
+      font-weight: 500;
+      margin-bottom: 40px;
+    }
+    .cover-meta {
+      background: #0d47a1;
+      color: #fff;
+      border-radius: 8px;
+      padding: 20px 40px;
+      display: inline-block;
+      margin-bottom: 30px;
+    }
+    .cover-meta p { margin: 4px 0; font-size: 13px; }
+    .cover-meta strong { font-size: 14px; }
+    .cover-badge {
+      display: inline-block;
+      background: #ff8f00;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 4px 14px;
+      border-radius: 20px;
+      text-transform: uppercase;
+    }
+
+    /* ── TOC ── */
+    .toc {
+      page-break-after: always;
+      padding: 30px 0;
+    }
+    .toc h2 {
+      font-size: 20px;
+      color: #0d47a1;
+      border-bottom: 2px solid #0d47a1;
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+    .toc ol { padding-left: 20px; }
+    .toc li {
+      margin: 8px 0;
+      font-size: 13px;
+      color: #333;
+    }
+    .toc li a { color: #1565c0; text-decoration: none; }
+    .toc li span { float: right; color: #999; }
+
+    /* ── SECTIONS ── */
+    h1 {
+      font-size: 22px;
+      color: #0d47a1;
+      background: #e3f2fd;
+      padding: 14px 20px;
+      border-left: 5px solid #0d47a1;
+      border-radius: 0 8px 8px 0;
+      margin: 30px 0 20px;
+      page-break-before: always;
+    }
+    h1:first-of-type { page-break-before: avoid; }
+
+    h2 {
+      font-size: 17px;
+      color: #1565c0;
+      border-bottom: 2px solid #bbdefb;
+      padding-bottom: 6px;
+      margin: 24px 0 14px;
+    }
+    h3 {
+      font-size: 14px;
+      color: #0d47a1;
+      margin: 18px 0 10px;
+      font-weight: 700;
+    }
+    h4 {
+      font-size: 13px;
+      color: #555;
+      margin: 14px 0 8px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    p { margin: 8px 0; line-height: 1.7; color: #333; }
+
+    /* ── TABLES ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 12px;
+      page-break-inside: avoid;
+    }
+    thead tr {
+      background: #0d47a1;
+      color: #fff;
+    }
+    thead th {
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    tbody tr:nth-child(even) { background: #f5f9ff; }
+    tbody tr:hover { background: #e3f2fd; }
+    tbody td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #e0e8f0;
+      vertical-align: top;
+    }
+
+    /* ── CODE BLOCKS ── */
+    pre {
+      background: #1a1a2e;
+      color: #e8eaf6;
+      padding: 16px 20px;
+      border-radius: 8px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 11px;
+      overflow-x: auto;
+      margin: 12px 0 18px;
+      page-break-inside: avoid;
+      line-height: 1.6;
+    }
+    code {
+      background: #e3f2fd;
+      color: #0d47a1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      font-size: 11px;
+    }
+    pre code { background: none; color: inherit; padding: 0; }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .badge-orange { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+    .badge-blue   { background: #e3f2fd; color: #0d47a1; border: 1px solid #90caf9; }
+    .badge-green  { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+    .badge-red    { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
+    .badge-gray   { background: #f5f5f5; color: #424242; border: 1px solid #bdbdbd; }
+
+    /* ── CALLOUTS ── */
+    .callout {
+      border-left: 4px solid;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+      font-size: 12px;
+    }
+    .callout-info    { border-color: #1976d2; background: #e3f2fd; color: #0d47a1; }
+    .callout-warning { border-color: #f57c00; background: #fff3e0; color: #e65100; }
+    .callout-success { border-color: #388e3c; background: #e8f5e9; color: #1b5e20; }
+    .callout strong { font-weight: 700; }
+
+    /* ── FLOW DIAGRAM ── */
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 16px 0;
+    }
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .flow-box {
+      background: #fff;
+      border: 2px solid #1976d2;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #0d47a1;
+      min-width: 260px;
+      text-align: center;
+    }
+    .flow-box.active { background: #1976d2; color: #fff; }
+    .flow-box.success { border-color: #388e3c; color: #1b5e20; background: #e8f5e9; }
+    .flow-arrow {
+      font-size: 22px;
+      color: #1976d2;
+      margin: 2px 0 2px 30px;
+      line-height: 1;
+    }
+    .flow-note {
+      font-size: 11px;
+      color: #555;
+      font-style: italic;
+      margin-left: 10px;
+    }
+
+    /* ── PRINT ── */
+    @media print {
+      body { padding: 20px; font-size: 12px; }
+      h1 { page-break-before: always; font-size: 18px; }
+      pre { page-break-inside: avoid; }
+      table { page-break-inside: avoid; }
+      .cover { page-break-after: always; min-height: 80vh; }
+      .toc { page-break-after: always; }
+      @page { margin: 20mm 15mm; }
+    }
+
+    hr { border: none; border-top: 1px solid #e0e8f0; margin: 20px 0; }
+    ul, ol { padding-left: 22px; margin: 8px 0; }
+    li { margin: 5px 0; line-height: 1.6; }
+    .endpoint-pill {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 11px;
+      background: #1a1a2e;
+      color: #80cbc4;
+      padding: 3px 10px;
+      border-radius: 4px;
+      margin-right: 6px;
+    }
+    .method-get    { background: #e8f5e9; color: #1b5e20; }
+    .method-post   { background: #fff3e0; color: #e65100; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+    .card {
+      border: 1px solid #bbdefb;
+      border-radius: 8px;
+      padding: 14px;
+      background: #f5f9ff;
+    }
+    .card h4 { color: #0d47a1; margin-bottom: 8px; }
+    .card ul { font-size: 12px; }
+    footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 2px solid #e0e8f0;
+      text-align: center;
+      font-size: 11px;
+      color: #999;
+      page-break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     COVER PAGE
+══════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-logo">MALITRANS</div>
+  <div class="cover-sub">Plateforme de Transport & Logistique</div>
+  <h1>Cahier Fonctionnel<br/>Gestion de Flotte Web</h1>
+  <h2>Module DeliveryCompany / COMPANY_MANAGER</h2>
+  <div class="cover-meta">
+    <p><strong>Version :</strong> 1.0</p>
+    <p><strong>Date :</strong> Juin 2026</p>
+    <p><strong>Portée :</strong> Interface Web — Fleet Management</p>
+    <p><strong>Rôles couverts :</strong> COMPANY_MANAGER, SUPPLIER</p>
+  </div>
+  <br/>
+  <span class="cover-badge">Confidentiel — Usage interne</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TABLE OF CONTENTS
+══════════════════════════════════════════════════════ -->
+<div class="toc">
+  <h2>Table des Matières</h2>
+  <ol>
+    <li><a href="#contexte">Contexte &amp; Objectifs</a></li>
+    <li><a href="#acteurs">Acteurs &amp; Rôles</a></li>
+    <li><a href="#statuts">Statuts &amp; Cycle de Vie du Chauffeur</a></li>
+    <li><a href="#ecrans">Écrans &amp; Fonctionnalités</a>
+      <ol style="list-style:lower-alpha">
+        <li>Tableau de bord — Vue flotte complète</li>
+        <li>File d'attente — Chauffeurs à valider</li>
+        <li>Dossier complet d'un chauffeur</li>
+        <li>Validation d'un chauffeur</li>
+      </ol>
+    </li>
+    <li><a href="#garant">Formulaire Garant</a></li>
+    <li><a href="#matricule">Génération du Matricule</a></li>
+    <li><a href="#auth">Authentification &amp; Sécurité</a></li>
+    <li><a href="#endpoints">Récapitulatif des Endpoints</a></li>
+    <li><a href="#architecture">Architecture UI Suggérée</a></li>
+    <li><a href="#erreurs">Gestion des Erreurs</a></li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     1. CONTEXTE
+══════════════════════════════════════════════════════ -->
+<h1 id="contexte">1. Contexte &amp; Objectifs</h1>
+
+<p>
+  Le module web de <strong>Gestion de Flotte</strong> constitue le tableau de bord destiné aux responsables
+  de société de transport (<code>COMPANY_MANAGER</code>) et aux fournisseurs (<code>SUPPLIER</code>) au sein
+  de la plateforme MaliTrans.
+</p>
+
+<h2>Objectifs principaux</h2>
+<ul>
+  <li>Visualiser et filtrer l'ensemble des chauffeurs rattachés à la société</li>
+  <li>Traiter les demandes d'inscription de chauffeurs en attente de validation</li>
+  <li>Valider les dossiers complets (garants + documents d'identité)</li>
+  <li>Consulter le dossier complet de tout chauffeur de la flotte</li>
+  <li>Suivre le statut d'avancement de chaque chauffeur dans le workflow d'activation</li>
+</ul>
+
+<div class="callout callout-warning">
+  <strong>Contrainte de sécurité critique :</strong> Un manager ne peut voir et gérer QUE les chauffeurs
+  de SA propre société. Cette restriction est appliquée côté backend de façon stricte et non contournable.
+</div>
+
+<h2>Périmètre du document</h2>
+<p>Ce cahier fonctionnel couvre exclusivement le module de gestion de flotte. Les modules
+   Administration (ADMIN), espace Chauffeur et espace Client sont hors périmètre.</p>
+
+
+<!-- ══════════════════════════════════════════════════════
+     2. ACTEURS
+══════════════════════════════════════════════════════ -->
+<h1 id="acteurs">2. Acteurs &amp; Rôles</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Acteur</th>
+      <th>Rôle système</th>
+      <th>Cardinalité</th>
+      <th>Accès au module flotte</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Gestionnaire Société</strong></td>
+      <td><code>COMPANY_MANAGER</code></td>
+      <td>1 par société</td>
+      <td>Accès complet (lecture + validation)</td>
+    </tr>
+    <tr>
+      <td><strong>Fournisseur</strong></td>
+      <td><code>SUPPLIER</code></td>
+      <td>Multiple par société</td>
+      <td>Accès complet (lecture + validation) + gestion livraisons</td>
+    </tr>
+    <tr>
+      <td><strong>Chauffeur</strong></td>
+      <td><code>CHAUFFEUR</code></td>
+      <td>Multiple par société</td>
+      <td>Aucun accès au module flotte</td>
+    </tr>
+    <tr>
+      <td><strong>Administrateur</strong></td>
+      <td><code>ADMIN</code></td>
+      <td>Global</td>
+      <td>Gestion globale (hors périmètre ce document)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-info">
+  <strong>Note :</strong> Un <code>SUPPLIER</code> possède les mêmes droits qu'un <code>COMPANY_MANAGER</code>
+  sur le module flotte. La différence réside dans ses capacités supplémentaires de gestion des livraisons.
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     3. STATUTS
+══════════════════════════════════════════════════════ -->
+<h1 id="statuts">3. Statuts &amp; Cycle de Vie du Chauffeur</h1>
+
+<h2>3.1 Diagramme de cycle de vie</h2>
+
+<div class="flow">
+  <div class="flow-step">
+    <div class="flow-box">Inscription Chauffeur<br/><small>(+ choix de la société)</small></div>
+  </div>
+  <div class="flow-arrow">↓</div>
+  <div class="flow-step">
+    <div class="flow-box active">PENDING_COMPANY_VERIFICATION</div>
+    <span class="flow-note">→ Action requise du COMPANY_MANAGER</span>
+  </div>
+  <div class="flow-arrow">↓ <small style="color:#555;font-size:11px">(Manager valide : 2 garants + doc identité)</small></div>
+  <div class="flow-step">
+    <div class="flow-box">PENDING_ADMIN_APPROVAL</div>
+    <span class="flow-note">→ Matricule généré automatiquement</span>
+  </div>
+  <div class="flow-arrow">↓ <small style="color:#555;font-size:11px">(Admin approuve)</small></div>
+  <div class="flow-step">
+    <div class="flow-box success">ACTIVE</div>
+    <span class="flow-note">→ Chauffeur opérationnel, peut accepter des courses</span>
+  </div>
+</div>
+
+<h2>3.2 Tableau des statuts</h2>
+
+<table>
+  <thead>
+    <tr><th>Statut</th><th>Badge UI</th><th>Signification</th><th>Action disponible</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>PENDING_COMPANY_VERIFICATION</code></td>
+      <td><span class="badge badge-orange">En attente</span></td>
+      <td>Inscrit, attend la validation du manager</td>
+      <td>Bouton "Valider le dossier"</td>
+    </tr>
+    <tr>
+      <td><code>PENDING_ADMIN_APPROVAL</code></td>
+      <td><span class="badge badge-blue">Soumis Admin</span></td>
+      <td>Validé par manager, attend l'admin</td>
+      <td>Consultation dossier uniquement</td>
+    </tr>
+    <tr>
+      <td><code>ACTIVE</code></td>
+      <td><span class="badge badge-green">Actif</span></td>
+      <td>Pleinement opérationnel</td>
+      <td>Consultation dossier uniquement</td>
+    </tr>
+    <tr>
+      <td><code>SUSPENDED</code></td>
+      <td><span class="badge badge-red">Suspendu</span></td>
+      <td>Compte suspendu</td>
+      <td>Consultation dossier uniquement</td>
+    </tr>
+    <tr>
+      <td><code>REJECTED</code></td>
+      <td><span class="badge badge-gray">Rejeté</span></td>
+      <td>Rejeté par l'admin</td>
+      <td>Consultation dossier uniquement</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════
+     4. ÉCRANS
+══════════════════════════════════════════════════════ -->
+<h1 id="ecrans">4. Écrans &amp; Fonctionnalités</h1>
+
+<!-- ── 4.1 ── -->
+<h2>4.1 Tableau de bord — Vue Flotte Complète</h2>
+
+<p>
+  <span class="endpoint-pill method-get">GET</span>
+  <code>/api/company/drivers</code>
+  &nbsp;&nbsp;Auth : <strong>JWT Bearer Token</strong>
+</p>
+
+<h3>Paramètres de requête</h3>
+<table>
+  <thead>
+    <tr><th>Paramètre</th><th>Type</th><th>Défaut</th><th>Contrainte</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>page</code></td><td>int</td><td>1</td><td>≥ 1</td><td>Numéro de page (base 1)</td></tr>
+    <tr><td><code>limit</code></td><td>int</td><td>20</td><td>1 à 100</td><td>Éléments par page</td></tr>
+    <tr><td><code>status</code></td><td>String</td><td>null</td><td>Valeur enum valide ou vide</td><td>Filtre par statut chauffeur</td></tr>
+    <tr><td><code>q</code></td><td>String</td><td>null</td><td>—</td><td>Recherche username, téléphone, matricule (insensible à la casse)</td></tr>
+  </tbody>
+</table>
+
+<h3>Structure de réponse</h3>
+<pre><code>{
+  "data": [
+    {
+      "id": 12,
+      "username": "mamadou_diallo",
+      "fullName": "Mamadou Diallo",
+      "phone": "+22376543210",
+      "status": "PENDING_COMPANY_VERIFICATION",
+      "matricule": null,
+      "createdAt": null
+    }
+  ],
+  "meta": {
+    "totalItems": 45,
+    "currentPage": 1,
+    "totalPages": 3,
+    "pageSize": 20
+  }
+}</code></pre>
+
+<h3>Colonnes du tableau</h3>
+<table>
+  <thead>
+    <tr><th>Colonne</th><th>Champ source</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Nom complet</td><td><code>fullName</code></td><td>—</td></tr>
+    <tr><td>Nom d'utilisateur</td><td><code>username</code></td><td>—</td></tr>
+    <tr><td>Téléphone</td><td><code>phone</code></td><td>—</td></tr>
+    <tr><td>Matricule</td><td><code>matricule</code></td><td>Afficher "—" si null</td></tr>
+    <tr><td>Statut</td><td><code>status</code></td><td>Badge coloré selon §3.2</td></tr>
+    <tr><td>Actions</td><td>—</td><td>Icône dossier + icône validation (si PENDING)</td></tr>
+  </tbody>
+</table>
+
+<h3>Règles UI</h3>
+<ul>
+  <li>Barre de recherche avec debounce 300ms → paramètre <code>q</code></li>
+  <li>Filtres statut en tabs ou dropdown multi-sélection</li>
+  <li>Pagination avec navigation page précédente / suivante / numéros</li>
+  <li>Bouton "Valider" visible <strong>seulement</strong> si <code>status === PENDING_COMPANY_VERIFICATION</code></li>
+  <li>Badge compteur dans le menu latéral indiquant le nombre de chauffeurs en attente</li>
+</ul>
+
+<hr/>
+
+<!-- ── 4.2 ── -->
+<h2>4.2 File d'attente — Chauffeurs à Valider</h2>
+
+<p>
+  <span class="endpoint-pill method-get">GET</span>
+  <code>/api/company/drivers/pending</code>
+  &nbsp;&nbsp;Auth : <strong>JWT Bearer Token</strong>
+</p>
+
+<p>Retourne la liste complète des chauffeurs en statut <code>PENDING_COMPANY_VERIFICATION</code>
+   sans pagination (liste directe), triée par ID décroissant (les plus récents en premier).</p>
+
+<h3>Règles UI</h3>
+<ul>
+  <li>Accessible depuis un badge cliquable dans la navigation principale</li>
+  <li>Chaque ligne dispose d'un bouton "Ouvrir le dossier" → redirection vers l'écran §4.3</li>
+  <li>Liste vide → afficher un message "Aucun chauffeur en attente de validation"</li>
+  <li>Rafraîchissement automatique suggéré toutes les 60 secondes (polling léger)</li>
+</ul>
+
+<hr/>
+
+<!-- ── 4.3 ── -->
+<h2>4.3 Dossier Complet d'un Chauffeur</h2>
+
+<p>
+  <span class="endpoint-pill method-get">GET</span>
+  <code>/api/company/drivers/{driverId}/dossier</code>
+  &nbsp;&nbsp;Auth : <strong>JWT Bearer Token</strong>
+</p>
+
+<h3>Structure de réponse</h3>
+<pre><code>{
+  "id": 12,
+  "username": "mamadou_diallo",
+  "fullName": "Mamadou Diallo",
+  "phone": "+22376543210",
+  "address": "Quartier Hamdallaye, Bamako",
+  "vehicleType": "Moto",
+  "identityDocumentUrl": "https://cdn.exemple.com/docs/doc.pdf",
+  "matricule": "BAM-2026-0012",
+  "status": "PENDING_ADMIN_APPROVAL",
+  "companyName": "Bamako Livraison Rapide",
+  "guarantors": [
+    {
+      "id": 1,
+      "name": "Ibrahim Coulibaly",
+      "phone": "+22379001234",
+      "address": "Rue 45, Bamako",
+      "relation": "frère",
+      "identityDocumentUrl": "https://cdn.exemple.com/docs/garant1.pdf",
+      "driverId": 12
+    },
+    {
+      "id": 2,
+      "name": "Fatoumata Traoré",
+      "phone": "+22369005678",
+      "address": "Commune V, Bamako",
+      "relation": "collègue",
+      "identityDocumentUrl": "https://cdn.exemple.com/docs/garant2.pdf",
+      "driverId": 12
+    }
+  ]
+}</code></pre>
+
+<h3>Organisation de l'écran dossier</h3>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Section 1 — Identité Chauffeur</h4>
+    <ul>
+      <li>Nom complet, téléphone, adresse</li>
+      <li>Type de véhicule</li>
+      <li>Matricule (si déjà généré)</li>
+      <li>Statut avec badge coloré</li>
+      <li>Document d'identité : bouton de téléchargement / aperçu PDF</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Section 2 — Garants</h4>
+    <ul>
+      <li>Compteur : "X / 2 garant(s) renseigné(s)"</li>
+      <li>Pour chaque garant : nom, téléphone, adresse, relation</li>
+      <li>Document d'identité de chaque garant</li>
+      <li>Indicateur manquant si &lt; 2 garants</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <h4>Section 3 — Actions</h4>
+  <ul>
+    <li>Bouton <strong>"Valider le dossier"</strong> — visible uniquement si <code>status === PENDING_COMPANY_VERIFICATION</code></li>
+    <li>Ouvre le formulaire de validation (§4.4) en modal ou en page dédiée</li>
+  </ul>
+</div>
+
+<hr/>
+
+<!-- ── 4.4 ── -->
+<h2>4.4 Validation d'un Chauffeur</h2>
+
+<p>
+  <span class="endpoint-pill method-post">POST</span>
+  <code>/api/company/drivers/{driverId}/validate</code>
+  &nbsp;&nbsp;Auth : <strong>JWT Bearer Token</strong>
+  &nbsp;&nbsp;Content-Type : <code>application/json</code>
+</p>
+
+<h3>Corps de la requête</h3>
+<pre><code>[
+  {
+    "name": "Ibrahim Coulibaly",
+    "phone": "+22379001234",
+    "address": "Rue 45, Bamako",
+    "relation": "frère",
+    "identityDocumentUrl": "https://cdn.exemple.com/docs/garant1.pdf"
+  },
+  {
+    "name": "Fatoumata Traoré",
+    "phone": "+22369005678",
+    "address": "Commune V, Bamako",
+    "relation": "collègue",
+    "identityDocumentUrl": "https://cdn.exemple.com/docs/garant2.pdf"
+  }
+]</code></pre>
+
+<div class="callout callout-info">
+  <strong>Note :</strong> Si les garants existent déjà en base (ajoutés précédemment), envoyer un tableau
+  vide <code>[]</code> est suffisant tant que le total en base est ≥ 2. Les garants soumis <em>remplacent</em>
+  les garants existants (delete + insert).
+</div>
+
+<h3>Réponse succès (200 OK)</h3>
+<pre><code>{ "message": "Driver validated successfully. Status changed to PENDING_ADMIN_APPROVAL." }</code></pre>
+
+<h3>Workflow de validation (étapes UI)</h3>
+<ol>
+  <li>Manager ouvre le dossier du chauffeur</li>
+  <li>Vérifie que le document d'identité chauffeur est présent (aperçu)</li>
+  <li>Saisit les informations des 2 garants (formulaire dédié)</li>
+  <li>Upload les documents d'identité de chaque garant (endpoint upload séparé → URL retournée)</li>
+  <li>Clique "Valider le dossier"</li>
+  <li>→ <strong>Succès</strong> : notification de succès + redirection vers la liste</li>
+  <li>→ <strong>Erreur</strong> : afficher le message d'erreur précis retourné par l'API</li>
+</ol>
+
+<h3>Erreurs possibles</h3>
+<table>
+  <thead>
+    <tr><th>HTTP</th><th>errorCode</th><th>Message</th><th>Cause</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>400</td>
+      <td><code>MISSING_GUARANTORS</code></td>
+      <td>"At least 2 guarantors required. Currently has N."</td>
+      <td>Moins de 2 garants en base</td>
+    </tr>
+    <tr>
+      <td>400</td>
+      <td><code>MISSING_DRIVER_ID_DOC</code></td>
+      <td>"Driver identity document missing"</td>
+      <td>Aucun document d'identité chauffeur</td>
+    </tr>
+    <tr>
+      <td>400</td>
+      <td>—</td>
+      <td>"Driver status must be PENDING_COMPANY_VERIFICATION. Current status: {X}"</td>
+      <td>Statut incorrect (déjà traité)</td>
+    </tr>
+    <tr>
+      <td>403</td>
+      <td>—</td>
+      <td>"Manager can only validate drivers from their own company"</td>
+      <td>Tentative cross-société</td>
+    </tr>
+    <tr>
+      <td>401</td>
+      <td>—</td>
+      <td>"Unauthorized"</td>
+      <td>Token JWT manquant ou expiré</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════
+     5. GARANT
+══════════════════════════════════════════════════════ -->
+<h1 id="garant">5. Formulaire Garant</h1>
+
+<p>Chaque chauffeur doit avoir <strong>exactement 2 garants</strong>. Le formulaire de validation
+   contient deux blocs identiques (Garant 1 et Garant 2).</p>
+
+<table>
+  <thead>
+    <tr><th>Champ</th><th>Type</th><th>Requis</th><th>Validation frontend</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>name</code></td><td>String</td><td>Oui</td><td>Non vide, min 3 caractères</td></tr>
+    <tr><td><code>phone</code></td><td>String</td><td>Oui</td><td>Non vide, format téléphone</td></tr>
+    <tr><td><code>address</code></td><td>String</td><td>Oui</td><td>Non vide</td></tr>
+    <tr><td><code>relation</code></td><td>String</td><td>Oui</td><td>Non vide (ex: père, mère, frère, ami, collègue)</td></tr>
+    <tr><td><code>identityDocumentUrl</code></td><td>String (URL)</td><td>Oui</td><td>URL valide après upload</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-warning">
+  <strong>Important — Gestion de l'upload :</strong> Le frontend doit d'abord uploader le fichier document
+  via un endpoint d'upload dédié, récupérer l'URL retournée, puis inclure cette URL dans le corps de la
+  requête de validation. Ne pas envoyer le fichier brut dans la requête de validation.
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     6. MATRICULE
+══════════════════════════════════════════════════════ -->
+<h1 id="matricule">6. Génération du Matricule</h1>
+
+<p>Le matricule est <strong>généré automatiquement</strong> par le backend lors de la validation du chauffeur.
+   Aucune action UI n'est requise.</p>
+
+<h2>Format</h2>
+<pre><code>{PREFIX}-{ANNÉE}-{NNNN}
+
+PREFIX : 3 premiers caractères alphanumériques du nom de la société (MAJUSCULES)
+         - Non alphanumériques supprimés
+         - Complété par 'X' si nom trop court
+ANNÉE  : Année courante (4 chiffres)
+NNNN   : ID du chauffeur sur 4 chiffres (zéro-paddé)</code></pre>
+
+<h2>Exemples</h2>
+<table>
+  <thead>
+    <tr><th>Société</th><th>ID Chauffeur</th><th>Année</th><th>Matricule généré</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Bamako Livraison Rapide</td><td>12</td><td>2026</td><td><code>BAM-2026-0012</code></td></tr>
+    <tr><td>Trans-Mali Express</td><td>145</td><td>2026</td><td><code>TRA-2026-0145</code></td></tr>
+    <tr><td>Sahel Transport &amp; Logistique</td><td>3</td><td>2026</td><td><code>SAH-2026-0003</code></td></tr>
+    <tr><td>Gao Transport</td><td>1200</td><td>2026</td><td><code>GAO-2026-1200</code></td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════
+     7. AUTH & SÉCURITÉ
+══════════════════════════════════════════════════════ -->
+<h1 id="auth">7. Authentification &amp; Sécurité</h1>
+
+<h2>Mécanisme d'authentification</h2>
+<table>
+  <thead>
+    <tr><th>Aspect</th><th>Détail</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Type</td><td>JWT (JSON Web Token) — Stateless</td></tr>
+    <tr><td>Header HTTP</td><td><code>Authorization: Bearer {JWT_TOKEN}</code></td></tr>
+    <tr><td>Base URL</td><td><code>http://{host}:8080/api</code></td></tr>
+    <tr><td>CORS</td><td>Toutes origines autorisées (<code>*</code>)</td></tr>
+    <tr><td>Méthodes autorisées</td><td>GET, POST, PUT, DELETE, OPTIONS, PATCH</td></tr>
+  </tbody>
+</table>
+
+<h2>Règles d'autorisation</h2>
+<pre><code>POST /company/**  →  COMPANY_MANAGER ou SUPPLIER
+GET  /company/**  →  COMPANY_MANAGER ou SUPPLIER
+GET  /public/companies  →  Public (sans auth)</code></pre>
+
+<h2>Gestion des erreurs d'authentification</h2>
+<table>
+  <thead>
+    <tr><th>Code HTTP</th><th>Cause</th><th>Action UI</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>401 Unauthorized</td><td>Token manquant ou expiré</td><td>Rediriger vers la page de connexion</td></tr>
+    <tr><td>403 Forbidden</td><td>Rôle insuffisant ou cross-société</td><td>Afficher "Accès non autorisé"</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════
+     8. ENDPOINTS
+══════════════════════════════════════════════════════ -->
+<h1 id="endpoints">8. Récapitulatif des Endpoints</h1>
+
+<table>
+  <thead>
+    <tr><th>#</th><th>Méthode</th><th>URL</th><th>Auth requise</th><th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><span class="badge badge-green">GET</span></td>
+      <td><code>/api/company/drivers</code></td>
+      <td>JWT — CM ou SUPPLIER</td>
+      <td>Liste paginée avec filtres (page, limit, status, q)</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><span class="badge badge-green">GET</span></td>
+      <td><code>/api/company/drivers/pending</code></td>
+      <td>JWT — CM ou SUPPLIER</td>
+      <td>Chauffeurs en attente de validation (sans pagination)</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><span class="badge badge-green">GET</span></td>
+      <td><code>/api/company/drivers/{id}/dossier</code></td>
+      <td>JWT — CM ou SUPPLIER</td>
+      <td>Dossier complet du chauffeur avec garants</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><span class="badge badge-orange">POST</span></td>
+      <td><code>/api/company/drivers/{id}/validate</code></td>
+      <td>JWT — CM ou SUPPLIER</td>
+      <td>Valider chauffeur (garants + doc identité)</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><span class="badge badge-green">GET</span></td>
+      <td><code>/api/public/companies</code></td>
+      <td>Public (sans auth)</td>
+      <td>Liste des sociétés actives (pour formulaires)</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════
+     9. ARCHITECTURE UI
+══════════════════════════════════════════════════════ -->
+<h1 id="architecture">9. Architecture UI Suggérée</h1>
+
+<h2>Arborescence des routes</h2>
+<pre><code>/dashboard
+├── /fleet                          ← Liste complète (Endpoint 1)
+│   ├── [Barre de recherche]
+│   ├── [Filtres statut — tabs]
+│   ├── [Tableau avec pagination]
+│   └── [Badge "En attente : N"]    ← appel Endpoint 2
+│
+├── /fleet/pending                  ← File d'attente (Endpoint 2)
+│   └── [Liste chauffeurs à valider, bouton "Ouvrir dossier"]
+│
+└── /fleet/driver/:id               ← Dossier chauffeur (Endpoint 3 + 4)
+    ├── [Section identité chauffeur]
+    ├── [Section document identité]
+    ├── [Section garants]
+    └── [Bouton "Valider le dossier"] → POST Endpoint 4</code></pre>
+
+<h2>Composants principaux à développer</h2>
+<div class="grid-2">
+  <div class="card">
+    <h4>FleetTable</h4>
+    <ul>
+      <li>Tableau avec tri, pagination</li>
+      <li>Champ de recherche debounced</li>
+      <li>Filtres statut en tabs</li>
+      <li>Badges statut colorés</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>PendingBadge</h4>
+    <ul>
+      <li>Compteur dans la navigation</li>
+      <li>Polling toutes les 60s</li>
+      <li>Cliquable → /fleet/pending</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>DriverDossier</h4>
+    <ul>
+      <li>Affichage infos chauffeur</li>
+      <li>Aperçu/téléchargement doc</li>
+      <li>Liste des garants</li>
+      <li>Bouton validation conditionnel</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>ValidationForm</h4>
+    <ul>
+      <li>2 blocs garant identiques</li>
+      <li>Upload document par garant</li>
+      <li>Validation frontend des champs</li>
+      <li>Gestion erreurs API</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     10. GESTION DES ERREURS
+══════════════════════════════════════════════════════ -->
+<h1 id="erreurs">10. Gestion des Erreurs</h1>
+
+<h2>Format de réponse erreur (global)</h2>
+<pre><code>{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "At least 2 guarantors required. Currently has 1.",
+  "path": "/api/company/drivers/12/validate",
+  "timestamp": "2026-06-13T10:30:00"
+}</code></pre>
+
+<h2>Format erreur de validation métier</h2>
+<pre><code>{
+  "errorCode": "MISSING_GUARANTORS",
+  "message": "At least 2 guarantors required. Currently has 1."
+}</code></pre>
+
+<h2>Codes d'erreur métier</h2>
+<table>
+  <thead>
+    <tr><th>errorCode</th><th>HTTP</th><th>Message</th><th>Action UI recommandée</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>MISSING_GUARANTORS</code></td>
+      <td>400</td>
+      <td>"At least 2 guarantors required."</td>
+      <td>Mettre en surbrillance les blocs garant</td>
+    </tr>
+    <tr>
+      <td><code>MISSING_DRIVER_ID_DOC</code></td>
+      <td>400</td>
+      <td>"Driver identity document missing"</td>
+      <td>Indiquer que le doc identité est manquant</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>400</td>
+      <td>"Driver status must be PENDING_COMPANY_VERIFICATION"</td>
+      <td>Rafraîchir la page (statut déjà changé)</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>403</td>
+      <td>"Manager can only validate drivers from their own company"</td>
+      <td>Afficher erreur critique, bloquer l'action</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>401</td>
+      <td>"Unauthorized"</td>
+      <td>Rediriger vers la page de connexion</td>
+    </tr>
+    <tr>
+      <td>—</td>
+      <td>500</td>
+      <td>"Internal Server Error"</td>
+      <td>Afficher message générique "Erreur serveur"</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-success">
+  <strong>Bonne pratique :</strong> Toujours afficher le champ <code>message</code> de la réponse d'erreur
+  dans l'interface. Utiliser <code>errorCode</code> pour adapter l'affichage contextuel (ex: surligner
+  le bon champ de formulaire).
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════════ -->
+<footer>
+  <p>MaliTrans — Cahier Fonctionnel Gestion de Flotte Web — Version 1.0 — Juin 2026</p>
+  <p>Document généré à partir de l'analyse du code source du projet MaliTrans</p>
+</footer>
+
+</body>
+</html>
