@@ -20,6 +20,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -57,6 +59,24 @@ public class RideRequestService {
         this.mapper = mapper;
         this.notificationService = notificationService;
         this.googleMapsApiKey = googleMapsApiKey != null ? googleMapsApiKey.trim() : "";
+    }
+
+    private void runAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    action.run();
+                } catch (Exception e) {
+                    logger.warn("Post-commit action failed", e);
+                }
+            }
+        });
     }
 
     /**
@@ -432,11 +452,10 @@ public class RideRequestService {
         
         RideRequest saved = repository.save(request);
         
-        // Notify driver of assignment
-        notificationService.notifyDriverOfAssignment(saved);
-
-        // Notify client that their ride has been accepted by a driver
-        notificationService.notifyClientOfDriverAccepted(saved);
+        runAfterCommit(() -> {
+            notificationService.notifyDriverOfAssignment(saved);
+            notificationService.notifyClientOfDriverAccepted(saved);
+        });
         
         return mapper.toDto(saved);
     }
