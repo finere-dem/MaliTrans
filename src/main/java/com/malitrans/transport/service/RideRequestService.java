@@ -434,6 +434,9 @@ public class RideRequestService {
         
         // Notify driver of assignment
         notificationService.notifyDriverOfAssignment(saved);
+
+        // Notify client that their ride has been accepted by a driver
+        notificationService.notifyClientOfDriverAccepted(saved);
         
         return mapper.toDto(saved);
     }

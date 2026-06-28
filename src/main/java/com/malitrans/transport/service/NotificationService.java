@@ -32,5 +32,11 @@ public interface NotificationService {
      * @param request The ride request assigned to the driver
      */
     void notifyDriverOfAssignment(RideRequest request);
+
+    /**
+     * Notify the client that a driver accepted their delivery
+     * @param request The ride request accepted by a driver
+     */
+    void notifyClientOfDriverAccepted(RideRequest request);
 }
 

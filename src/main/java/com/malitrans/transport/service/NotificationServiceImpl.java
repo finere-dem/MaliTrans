@@ -145,4 +145,38 @@ public class NotificationServiceImpl implements NotificationService {
             logger.info("Notified driver {} of assignment to request id={}", driver.getId(), request.getId());
         }
     }
+
+    @Override
+    public void notifyClientOfDriverAccepted(RideRequest request) {
+        Utilisateur client = request.getClient();
+        if (client == null) {
+            logger.debug("No client on request id={}, skipping driver accepted FCM", request.getId());
+            return;
+        }
+        String fcmToken = client.getFcmToken();
+        if (fcmToken == null || fcmToken.isBlank()) {
+            logger.debug("Client {} has no FCM token, skipping driver accepted push", client.getId());
+            return;
+        }
+
+        Utilisateur driver = request.getChauffeur();
+        String driverName = driver != null ? driver.getFullName() : "Un livreur";
+        String title = "Course prise en charge";
+        String body = driverName + " a accepte votre course #" + request.getId() + ". Vous pouvez maintenant suivre la livraison.";
+
+        Map<String, String> data = new HashMap<>();
+        data.put("rideId", request.getId().toString());
+        data.put("type", "DRIVER_ACCEPTED");
+        data.put("status", "DRIVER_ACCEPTED");
+        if (driver != null && driver.getId() != null) {
+            data.put("driverId", driver.getId().toString());
+        }
+
+        boolean sent = fcmService.sendToToken(fcmToken, title, body, data);
+        if (!sent) {
+            logger.warn("FCM send failed for client {} after driver accepted rideId={}", client.getId(), request.getId());
+        } else {
+            logger.info("Notified client {} that driver accepted request id={}", client.getId(), request.getId());
+        }
+    }
 }
