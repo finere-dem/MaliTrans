@@ -829,6 +829,7 @@ public class RideRequestService {
         appendQueryParam(link, "sender", resolveShareSenderName(request));
         appendQueryParam(link, "recipient", resolveShareRecipientName(request));
         appendQueryParam(link, "status", request.getValidationStatus() != null ? request.getValidationStatus().name() : null);
+        appendQueryParam(link, "v", Long.toString(System.currentTimeMillis()));
 
         return link.toString();
     }
