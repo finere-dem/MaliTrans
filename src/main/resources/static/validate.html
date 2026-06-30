@@ -289,23 +289,23 @@
             <div class="package-info">
                 <div class="info-row">
                     <div class="info-label">Expediteur</div>
-                    <div class="info-value" id="val-sender">Woyo Client</div>
+                    <div class="info-value" id="val-sender">Informations non chargees</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Destinataire</div>
-                    <div class="info-value" id="val-recipient">Destinataire</div>
+                    <div class="info-value" id="val-recipient">Informations non chargees</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Description du colis</div>
-                    <div class="info-value" id="val-desc">Colis Woyo</div>
+                    <div class="info-value" id="val-desc">Informations non chargees</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Cout de livraison</div>
-                    <div class="info-value" id="val-price">Prix a confirmer</div>
+                    <div class="info-value" id="val-price">Informations non chargees</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Depart</div>
-                    <div class="info-value" id="val-origin">Adresse de depart non disponible</div>
+                    <div class="info-value" id="val-origin">Informations non chargees</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Destination</div>
@@ -313,7 +313,7 @@
                 </div>
                 <div class="info-row">
                     <div class="info-label">Statut</div>
-                    <div class="info-value" id="val-public-status">En attente de votre adresse</div>
+                    <div class="info-value" id="val-public-status">Informations non chargees</div>
                 </div>
             </div>
 
@@ -394,14 +394,24 @@
         }
 
         function readPackageInfoFromUrl() {
+            const hasInlineData = Boolean(
+                paramValue('sender') ||
+                paramValue('recipient') ||
+                paramValue('desc') ||
+                paramValue('price') ||
+                paramValue('origin') ||
+                paramValue('status')
+            );
+
             return {
-                senderName: paramValue('sender') || 'Woyo Client',
-                recipientName: paramValue('recipient') || 'Destinataire',
-                packageDescription: paramValue('desc') || 'Colis Woyo',
+                hasInlineData: hasInlineData,
+                senderName: paramValue('sender'),
+                recipientName: paramValue('recipient'),
+                packageDescription: paramValue('desc'),
                 price: paramValue('price'),
-                origin: paramValue('origin') || 'Adresse de depart non disponible',
+                origin: paramValue('origin'),
                 destination: paramValue('destination'),
-                validationStatus: paramValue('status') || 'WAITING_RECIPIENT_VALIDATION',
+                validationStatus: paramValue('status'),
                 canValidateLocation: true
             };
         }
@@ -464,20 +474,23 @@
                 }
             } catch (error) {
                 const slowNetwork = error && error.name === 'AbortError';
+                const hasInlineData = readPackageInfoFromUrl().hasInlineData;
                 showError(slowNetwork
                     ? 'Connexion lente : les details se chargeront plus tard. Vous pouvez quand meme partager votre position GPS.'
-                    : (error.message || 'Impossible de charger les details. Vous pouvez quand meme partager votre position GPS.'));
+                    : (hasInlineData
+                        ? (error.message || 'Impossible de rafraichir les details. Vous pouvez quand meme partager votre position GPS.')
+                        : 'Impossible de charger les details de la course. Demandez a l expediteur de renvoyer un lien recent depuis l application.'));
                 stepOne.style.display = 'block';
                 validateBtn.disabled = false;
             }
         }
 
         function hydratePackageInfo(data) {
-            document.getElementById('val-sender').innerText = data.senderName || 'Woyo Client';
-            document.getElementById('val-recipient').innerText = data.recipientName || 'Destinataire';
-            document.getElementById('val-desc').innerText = data.packageDescription || 'Colis sans description';
+            document.getElementById('val-sender').innerText = data.senderName || 'Non disponible';
+            document.getElementById('val-recipient').innerText = data.recipientName || 'Non disponible';
+            document.getElementById('val-desc').innerText = data.packageDescription || 'Non disponible';
             document.getElementById('val-price').innerText = formatPrice(data.price);
-            document.getElementById('val-origin').innerText = data.origin || 'Adresse de depart non renseignee';
+            document.getElementById('val-origin').innerText = data.origin || 'Non disponible';
             document.getElementById('val-destination').innerText = data.destination ||
                 (data.canValidateLocation ? 'A confirmer apres partage GPS' : 'Destination non renseignee');
             document.getElementById('val-public-status').innerText = formatStatus(data.validationStatus, data.canValidateLocation);
@@ -790,7 +803,10 @@
             }
         }
 
-        hydratePackageInfo(readPackageInfoFromUrl());
+        const inlinePackageInfo = readPackageInfoFromUrl();
+        if (inlinePackageInfo.hasInlineData) {
+            hydratePackageInfo(inlinePackageInfo);
+        }
 
         if (token) {
             fetchPackageInfo();
