@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -140,7 +141,7 @@ public class RideRequestService {
         // Flow initialization logic - P2P Model: Client requests
         if (flowType == FlowType.CLIENT_INITIATED) {
             // Check if destination is provided. If not, it's waiting for recipient validation.
-            boolean hasDestination = dto.getDestination() != null && !dto.getDestination().trim().isEmpty();
+            boolean hasDestination = hasUsableDestination(dto.getDestination());
             
             if (!hasDestination) {
                 // Destination is unknown, waiting for recipient validation
@@ -198,6 +199,7 @@ public class RideRequestService {
     public List<RideRequestDTO> getReadyForPickupRequests() {
         return repository.findByValidationStatusOrderByCreatedAtDesc(ValidationStatus.READY_FOR_PICKUP)
                 .stream()
+                .filter(request -> hasUsableDestination(request.getDestination()))
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -228,6 +230,18 @@ public class RideRequestService {
     public RideRequest validateRecipientLocation(String token, Double latitude, Double longitude) {
         RideRequest request = repository.findByValidationToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Demande introuvable ou jeton invalide"));
+
+        if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) {
+            throw new IllegalArgumentException("Coordonnees GPS invalides");
+        }
+
+        boolean staleReadyWithoutDestination = request.getValidationStatus() == ValidationStatus.READY_FOR_PICKUP
+                && !hasUsableDestination(request.getDestination())
+                && request.getChauffeur() == null;
+
+        if (staleReadyWithoutDestination) {
+            request.setValidationStatus(ValidationStatus.WAITING_RECIPIENT_VALIDATION);
+        }
                 
         if (request.getValidationStatus() != ValidationStatus.WAITING_RECIPIENT_VALIDATION) {
             throw new IllegalStateException("Le statut de cette commande ne nécessite pas de validation destinataire.");
@@ -332,6 +346,17 @@ public class RideRequestService {
             throw new IllegalStateException("Request cannot be validated. Current status: " + request.getValidationStatus());
         }
         
+        if (!hasUsableDestination(request.getDestination())) {
+            request.setValidationStatus(ValidationStatus.WAITING_RECIPIENT_VALIDATION);
+            if (request.getValidationToken() == null || request.getValidationToken().isBlank()) {
+                request.setValidationToken(UUID.randomUUID().toString());
+            }
+            if (request.getQrCodeDelivery() == null || request.getQrCodeDelivery().isBlank()) {
+                request.setQrCodeDelivery(generateQrCode());
+            }
+            return mapper.toDto(repository.save(request));
+        }
+
         // Change status to READY_FOR_PICKUP
         request.setValidationStatus(ValidationStatus.READY_FOR_PICKUP);
         
@@ -775,7 +800,7 @@ public class RideRequestService {
             throw new org.springframework.security.access.AccessDeniedException("Vous n'êtes pas autorisé à obtenir ce lien.");
         }
 
-        boolean missingDestination = request.getDestination() == null || request.getDestination().trim().isEmpty();
+        boolean missingDestination = !hasUsableDestination(request.getDestination());
         boolean terminalStatus = request.getValidationStatus() == ValidationStatus.COMPLETED ||
                 request.getValidationStatus() == ValidationStatus.CANCELED;
         boolean canAskRecipient = request.getValidationStatus() == ValidationStatus.WAITING_RECIPIENT_VALIDATION ||
@@ -795,6 +820,82 @@ public class RideRequestService {
 
         repository.save(request);
 
-        return baseUrl + "/validate.html?token=" + request.getValidationToken();
+        StringBuilder link = new StringBuilder(baseUrl)
+                .append("/validate.html?token=")
+                .append(encodeQueryValue(request.getValidationToken()));
+        appendQueryParam(link, "origin", request.getOrigin());
+        appendQueryParam(link, "desc", request.getPackageDescription());
+        appendQueryParam(link, "price", request.getPrice() != null ? request.getPrice().toString() : null);
+        appendQueryParam(link, "sender", resolveShareSenderName(request));
+        appendQueryParam(link, "recipient", resolveShareRecipientName(request));
+        appendQueryParam(link, "status", request.getValidationStatus() != null ? request.getValidationStatus().name() : null);
+
+        return link.toString();
+    }
+
+    private boolean hasUsableDestination(String destination) {
+        if (destination == null) {
+            return false;
+        }
+        String value = destination.trim();
+        if (value.isEmpty()) {
+            return false;
+        }
+        String lower = value.toLowerCase(Locale.ROOT);
+        return !lower.equals("...")
+                && !lower.equals("-")
+                && !lower.equals("null")
+                && !lower.contains("a confirmer")
+                && !lower.contains("à confirmer")
+                && !lower.contains("destination non renseignee")
+                && !lower.contains("destination non renseignée")
+                && !lower.contains("adresse de reception")
+                && !lower.contains("adresse de réception")
+                && !lower.contains("position a renseigner")
+                && !lower.contains("position à renseigner");
+    }
+
+    private void appendQueryParam(StringBuilder link, String key, String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return;
+        }
+        link.append('&')
+                .append(key)
+                .append('=')
+                .append(encodeQueryValue(value.trim()));
+    }
+
+    private boolean isValidLatitude(Double latitude) {
+        return latitude != null && Double.isFinite(latitude) && latitude >= -90 && latitude <= 90;
+    }
+
+    private boolean isValidLongitude(Double longitude) {
+        return longitude != null && Double.isFinite(longitude) && longitude >= -180 && longitude <= 180;
+    }
+
+    private String encodeQueryValue(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private String resolveShareSenderName(RideRequest request) {
+        if (Boolean.FALSE.equals(request.getIsSenderClient())) {
+            if (request.getOtherPartyName() != null && !request.getOtherPartyName().isBlank()) {
+                return request.getOtherPartyName();
+            }
+            if (request.getSupplier() != null) {
+                return request.getSupplier().getFullName();
+            }
+        }
+        return request.getClient() != null ? request.getClient().getFullName() : "Woyo Client";
+    }
+
+    private String resolveShareRecipientName(RideRequest request) {
+        if (Boolean.TRUE.equals(request.getIsSenderClient())) {
+            if (request.getOtherPartyName() != null && !request.getOtherPartyName().isBlank()) {
+                return request.getOtherPartyName();
+            }
+            return "Destinataire";
+        }
+        return request.getClient() != null ? request.getClient().getFullName() : "Destinataire";
     }
 }

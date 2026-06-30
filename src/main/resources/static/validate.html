@@ -388,6 +388,47 @@
         let pollingTimer = null;
         let mapsPromise = null;
 
+        function paramValue(name) {
+            const value = urlParams.get(name);
+            return value && value.trim() ? value.trim() : null;
+        }
+
+        function readPackageInfoFromUrl() {
+            return {
+                senderName: paramValue('sender') || 'Woyo Client',
+                recipientName: paramValue('recipient') || 'Destinataire',
+                packageDescription: paramValue('desc') || 'Colis Woyo',
+                price: paramValue('price'),
+                origin: paramValue('origin') || 'Adresse de depart non disponible',
+                destination: paramValue('destination'),
+                validationStatus: paramValue('status') || 'WAITING_RECIPIENT_VALIDATION',
+                canValidateLocation: true
+            };
+        }
+
+        async function fetchJson(url, options = {}, timeoutMs = 10000) {
+            const controller = new AbortController();
+            const timeout = setTimeout(function () {
+                controller.abort();
+            }, timeoutMs);
+
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (_) {
+                    data = {};
+                }
+                return { response, data };
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
         function showError(message) {
             errorAlert.innerText = message;
             errorAlert.style.display = 'block';
@@ -406,8 +447,7 @@
             }
 
             try {
-                const response = await fetch(`${apiBaseUrl}/${token}`, { cache: 'no-store' });
-                const data = await response.json();
+                const { response, data } = await fetchJson(`${apiBaseUrl}/${token}`, { cache: 'no-store' }, 9000);
 
                 if (!response.ok) {
                     throw new Error(data.error || 'Impossible de charger les informations.');
@@ -423,8 +463,12 @@
                     startTracking(data);
                 }
             } catch (error) {
-                showError(error.message);
-                validateBtn.disabled = true;
+                const slowNetwork = error && error.name === 'AbortError';
+                showError(slowNetwork
+                    ? 'Connexion lente : les details se chargeront plus tard. Vous pouvez quand meme partager votre position GPS.'
+                    : (error.message || 'Impossible de charger les details. Vous pouvez quand meme partager votre position GPS.'));
+                stepOne.style.display = 'block';
+                validateBtn.disabled = false;
             }
         }
 
@@ -440,6 +484,9 @@
         }
 
         function formatPrice(price) {
+            if (price === null || price === undefined || String(price).trim() === '') {
+                return 'Prix non renseigne';
+            }
             const amount = Number(price);
             if (!Number.isFinite(amount)) {
                 return 'Prix non renseigne';
@@ -460,6 +507,10 @@
         }
 
         function requestLocation() {
+            if (!token) {
+                showError('Lien invalide : token manquant.');
+                return;
+            }
             if (!navigator.geolocation) {
                 showError("La geolocalisation n'est pas supportee par votre navigateur.");
                 return;
@@ -471,9 +522,9 @@
             clearError();
 
             navigator.geolocation.getCurrentPosition(sendLocation, handleLocationError, {
-                enableHighAccuracy: true,
-                timeout: 12000,
-                maximumAge: 0
+                enableHighAccuracy: false,
+                timeout: 20000,
+                maximumAge: 600000
             });
         }
 
@@ -482,23 +533,24 @@
             const lng = position.coords.longitude;
 
             try {
-                const response = await fetch(`${apiBaseUrl}/${token}`, {
+                const { response, data } = await fetchJson(`${apiBaseUrl}/${token}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ latitude: lat, longitude: lng })
-                });
-
-                const data = await response.json();
+                }, 20000);
 
                 if (!response.ok) {
                     throw new Error(data.error || 'Erreur de validation');
                 }
 
+                hydratePackageInfo(data);
                 stepOne.style.display = 'none';
                 showQrCode(data.qrCodeDelivery);
                 startTracking(data);
             } catch (error) {
-                showError(error.message);
+                showError(error && error.name === 'AbortError'
+                    ? 'Connexion trop lente pendant l envoi GPS. Verifiez le reseau puis reessayez.'
+                    : (error.message || 'Erreur pendant l envoi GPS.'));
                 resetButton();
             }
         }
@@ -506,13 +558,13 @@
         function handleLocationError(error) {
             let message = 'Erreur GPS inconnue.';
             if (error.code === 1) {
-                message = "Vous avez refuse l'acces a la localisation GPS. Elle est obligatoire pour recevoir votre colis.";
+                message = "Vous avez refuse l'acces a la localisation GPS. Autorisez la localisation pour ce site puis reessayez.";
             }
             if (error.code === 2) {
-                message = 'Position GPS introuvable. Veuillez reessayer dans un endroit degage.';
+                message = 'Position GPS introuvable. Activez la localisation du telephone puis reessayez dans un endroit degage.';
             }
             if (error.code === 3) {
-                message = 'Delai de recherche GPS depasse.';
+                message = 'Delai de recherche GPS depasse. Sur reseau lent, reessayez ou ouvrez le lien dans Safari/Chrome.';
             }
             showError(message);
             resetButton();
@@ -520,7 +572,7 @@
 
         function resetButton() {
             validateBtn.disabled = false;
-            validateBtn.querySelector('span').textContent = 'Reessayer / Partager position';
+            validateBtn.querySelector('span').textContent = 'Partager ma position GPS';
             btnLoader.style.display = 'none';
         }
 
@@ -737,6 +789,8 @@
                 // Keep the WebSocket connection alive; polling is only a status fallback.
             }
         }
+
+        hydratePackageInfo(readPackageInfoFromUrl());
 
         if (token) {
             fetchPackageInfo();
