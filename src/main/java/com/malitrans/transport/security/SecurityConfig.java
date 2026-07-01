@@ -59,6 +59,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Enable CORS
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Stateless session
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/me").authenticated()
                         .requestMatchers("/auth/**").permitAll() // Public endpoints: /auth/login, /auth/register,
                                                                  // /auth/refresh-token
                         .requestMatchers("/public/**").permitAll() // Public endpoints: /public/companies

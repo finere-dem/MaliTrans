@@ -6,6 +6,8 @@ import com.malitrans.transport.dto.RefreshTokenRequest;
 import com.malitrans.transport.dto.RegisterDTO;
 import com.malitrans.transport.dto.VerifyRegistrationDTO;
 import com.malitrans.transport.exception.TokenRefreshException;
+import com.malitrans.transport.model.Utilisateur;
+import com.malitrans.transport.security.SecurityUtil;
 import com.malitrans.transport.service.AuthService;
 import com.malitrans.transport.service.GoogleAuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +35,20 @@ public class AuthController {
     public AuthController(AuthService authService, GoogleAuthService googleAuthService) {
         this.authService = authService;
         this.googleAuthService = googleAuthService;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me() {
+        Utilisateur user = SecurityUtil.getCurrentUser();
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("username", user.getUsername());
+        response.put("fullName", user.getFullName());
+        response.put("phone", user.getPhone());
+        response.put("email", user.getEmail());
+        response.put("role", user.getRole() != null ? user.getRole().name() : null);
+        response.put("createdAt", null);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Inscription (étape 1)", 
