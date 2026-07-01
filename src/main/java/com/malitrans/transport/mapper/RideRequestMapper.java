@@ -32,6 +32,8 @@ public interface RideRequestMapper {
     @Mapping(target = "qrCodePickup", ignore = true) // Generated in service
     @Mapping(target = "qrCodeDelivery", ignore = true) // Generated in service
     @Mapping(target = "validationToken", ignore = true) // Generated in service
+    @Mapping(target = "validationTokenCreatedAt", ignore = true) // Managed by validation-link lifecycle
+    @Mapping(target = "validationTokenUsedAt", ignore = true) // Managed by validation-link lifecycle
     RideRequest toEntity(RideRequestDTO dto);
     
     default String map(FlowType flowType) {

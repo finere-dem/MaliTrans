@@ -374,25 +374,24 @@
                 }
             }
 
-            function paramsFromSearch() {
+            function tokenFromSearch() {
                 var query = window.location.search || '';
-                var out = {};
                 if (query.charAt(0) === '?') {
                     query = query.substring(1);
                 }
                 if (!query) {
-                    return out;
+                    return '';
                 }
                 var parts = query.split('&');
                 for (var i = 0; i < parts.length; i += 1) {
                     var pair = parts[i].split('=');
                     var key = decodeURIComponent((pair[0] || '').replace(/\+/g, ' '));
                     var value = decodeURIComponent((pair.slice(1).join('=') || '').replace(/\+/g, ' '));
-                    if (key) {
-                        out[key] = value;
+                    if (key === 'token') {
+                        return value;
                     }
                 }
-                return out;
+                return '';
             }
 
             function showErrorCompat(message) {
@@ -465,7 +464,7 @@
                     if (xhr.status >= 200 && xhr.status < 300) {
                         success(data);
                     } else {
-                        failure((data && data.error) || 'Impossible de joindre le serveur.');
+                        failure((data && data.message) || (data && data.error) || 'Impossible de joindre le serveur.');
                     }
                 };
                 xhr.onerror = function () {
@@ -474,28 +473,11 @@
                 xhr.send(body ? JSON.stringify(body) : null);
             }
 
-            var params = paramsFromSearch();
-            var token = params.token || '';
-            var hasInlineData = params.sender || params.recipient || params.desc || params.price || params.origin || params.status;
-
-            if (hasInlineData) {
-                hydrateCompat({
-                    senderName: params.sender,
-                    recipientName: params.recipient,
-                    packageDescription: params.desc,
-                    price: params.price,
-                    origin: params.origin,
-                    destination: params.destination,
-                    validationStatus: params.status,
-                    canValidateLocation: true
-                });
-            }
+            var token = tokenFromSearch();
 
             if (token) {
-                requestJsonCompat('GET', '/api/public/validate/' + encodeURIComponent(token), null, hydrateCompat, function () {
-                    if (!hasInlineData) {
-                        showErrorCompat('Impossible de charger les details de la course. Demandez a l expediteur de renvoyer un lien recent.');
-                    }
+                requestJsonCompat('GET', '/api/ride/validate-info?token=' + encodeURIComponent(token), null, hydrateCompat, function (message) {
+                    showErrorCompat(message || 'Impossible de charger les details de la course. Demandez a l expediteur de renvoyer un lien recent.');
                 });
             }
 
@@ -577,6 +559,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const apiBaseUrl = '/api/public/validate';
+        const validateInfoUrl = '/api/ride/validate-info';
         const trackingWsUrl = '/api/ws-tracking';
         const bamako = { lat: 12.6392, lng: -8.0029 };
 
@@ -599,34 +582,7 @@
         let stompClient = null;
         let pollingTimer = null;
         let mapsPromise = null;
-
-        function paramValue(name) {
-            const value = urlParams.get(name);
-            return value && value.trim() ? value.trim() : null;
-        }
-
-        function readPackageInfoFromUrl() {
-            const hasInlineData = Boolean(
-                paramValue('sender') ||
-                paramValue('recipient') ||
-                paramValue('desc') ||
-                paramValue('price') ||
-                paramValue('origin') ||
-                paramValue('status')
-            );
-
-            return {
-                hasInlineData: hasInlineData,
-                senderName: paramValue('sender'),
-                recipientName: paramValue('recipient'),
-                packageDescription: paramValue('desc'),
-                price: paramValue('price'),
-                origin: paramValue('origin'),
-                destination: paramValue('destination'),
-                validationStatus: paramValue('status'),
-                canValidateLocation: true
-            };
-        }
+        let publicTrackingToken = null;
 
         async function fetchJson(url, options, timeoutMs) {
             options = options || {};
@@ -686,10 +642,10 @@
             }
 
             try {
-                const { response, data } = await fetchJson(`${apiBaseUrl}/${token}`, { cache: 'no-store' }, 9000);
+                const { response, data } = await fetchJson(`${validateInfoUrl}?token=${encodeURIComponent(token)}`, { cache: 'no-store' }, 9000);
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Impossible de charger les informations.');
+                    throw new Error(data.message || data.error || 'Impossible de charger les informations.');
                 }
 
                 hydratePackageInfo(data);
@@ -703,14 +659,15 @@
                 }
             } catch (error) {
                 const slowNetwork = error && error.name === 'AbortError';
-                const hasInlineData = readPackageInfoFromUrl().hasInlineData;
-                showError(slowNetwork
-                    ? 'Connexion lente : les details se chargeront plus tard. Vous pouvez quand meme partager votre position GPS.'
-                    : (hasInlineData
-                        ? (error.message || 'Impossible de rafraichir les details. Vous pouvez quand meme partager votre position GPS.')
-                        : 'Impossible de charger les details de la course. Demandez a l expediteur de renvoyer un lien recent depuis l application.'));
-                stepOne.style.display = 'block';
-                validateBtn.disabled = false;
+                if (slowNetwork) {
+                    showError('Connexion lente : les details se chargeront apres validation. Vous pouvez quand meme partager votre position GPS.');
+                    stepOne.style.display = 'block';
+                    validateBtn.disabled = false;
+                    return;
+                }
+                showError(error.message || 'Impossible de charger les details de la course. Demandez a l expediteur de renvoyer un lien recent depuis l application.');
+                stepOne.style.display = 'none';
+                validateBtn.disabled = true;
             }
         }
 
@@ -782,7 +739,7 @@
                 }, 20000);
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Erreur de validation');
+                    throw new Error(data.message || data.error || 'Erreur de validation');
                 }
 
                 hydratePackageInfo(data);
@@ -842,6 +799,7 @@
             if (!data || !data.rideId) return;
 
             currentRideId = data.rideId;
+            publicTrackingToken = data.trackingToken || data.qrCodeDelivery || publicTrackingToken;
             document.getElementById('display-ride-id').textContent = currentRideId;
             trackingContainer.style.display = 'block';
             updateTrackingState(data);
@@ -1017,7 +975,7 @@
         }
 
         function startTrackingPolling() {
-            if (pollingTimer || !token) return;
+            if (pollingTimer || !currentRideId || !publicTrackingToken) return;
             pollingTimer = setInterval(fetchTrackingStatus, 10000);
         }
 
@@ -1029,7 +987,8 @@
 
         async function fetchTrackingStatus() {
             try {
-                const response = await fetch(`${apiBaseUrl}/${token}/tracking`, { cache: 'no-store' });
+                if (!currentRideId || !publicTrackingToken) return;
+                const response = await fetch(`${apiBaseUrl}/tracking/${currentRideId}?code=${encodeURIComponent(publicTrackingToken)}`, { cache: 'no-store' });
                 const data = await response.json();
                 if (!response.ok) return;
                 hydratePackageInfo(data);
@@ -1040,11 +999,6 @@
             } catch (_) {
                 // Keep the WebSocket connection alive; polling is only a status fallback.
             }
-        }
-
-        const inlinePackageInfo = readPackageInfoFromUrl();
-        if (inlinePackageInfo.hasInlineData) {
-            hydratePackageInfo(inlinePackageInfo);
         }
 
         if (token) {

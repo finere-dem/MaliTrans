@@ -27,13 +27,11 @@ public class PublicValidationController {
 
     @GetMapping("/{token}")
     public ResponseEntity<?> getPublicRideInfo(@PathVariable String token) {
-        Optional<RideRequest> requestOpt = rideRequestService.getRideRequestByValidationToken(token);
-
-        if (requestOpt.isEmpty()) {
-            return ResponseEntity.status(404).body(Map.of("error", "Lien de validation invalide ou expire."));
+        try {
+            return ResponseEntity.ok(rideRequestService.getRecipientValidationInfo(token));
+        } catch (RideRequestService.LinkExpiredException e) {
+            return expiredLinkResponse(e);
         }
-
-        return ResponseEntity.ok(toPublicRideInfo(requestOpt.get()));
     }
 
     @PostMapping("/{token}")
@@ -48,6 +46,8 @@ public class PublicValidationController {
                     payload.getLatitude(),
                     payload.getLongitude());
             return ResponseEntity.ok(toPublicRideInfo(request));
+        } catch (RideRequestService.LinkExpiredException e) {
+            return expiredLinkResponse(e);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         } catch (IllegalStateException e) {
@@ -59,13 +59,40 @@ public class PublicValidationController {
 
     @GetMapping("/{token}/tracking")
     public ResponseEntity<?> getPublicTrackingInfo(@PathVariable String token) {
-        Optional<RideRequest> requestOpt = rideRequestService.getRideRequestByValidationToken(token);
+        try {
+            rideRequestService.getRecipientValidationInfo(token);
+        } catch (RideRequestService.LinkExpiredException e) {
+            return expiredLinkResponse(e);
+        }
 
+        Optional<RideRequest> requestOpt = rideRequestService.getRideRequestByValidationToken(token);
         if (requestOpt.isEmpty()) {
             return ResponseEntity.status(404).body(Map.of("error", "Lien de validation invalide ou expire."));
         }
 
         return ResponseEntity.ok(toPublicRideInfo(requestOpt.get()));
+    }
+
+    @GetMapping("/tracking/{rideId}")
+    public ResponseEntity<?> getPublicTrackingInfoByCode(@PathVariable Long rideId, @RequestParam String code) {
+        Optional<RideRequest> requestOpt = rideRequestService.getRideRequestEntityById(rideId);
+
+        if (requestOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Course introuvable."));
+        }
+
+        RideRequest request = requestOpt.get();
+        if (request.getQrCodeDelivery() == null || !request.getQrCodeDelivery().equals(code)) {
+            return ResponseEntity.status(403).body(Map.of("error", "Acces au suivi refuse."));
+        }
+
+        return ResponseEntity.ok(toPublicRideInfo(request));
+    }
+
+    private ResponseEntity<?> expiredLinkResponse(RideRequestService.LinkExpiredException e) {
+        return ResponseEntity.status(410).body(Map.of(
+                "error", "LINK_EXPIRED",
+                "message", e.getMessage()));
     }
 
     private Map<String, Object> toPublicRideInfo(RideRequest request) {
@@ -88,6 +115,7 @@ public class PublicValidationController {
         response.put("senderName", resolveSenderName(request));
         response.put("recipientName", resolveRecipientName(request));
         response.put("qrCodeDelivery", request.getQrCodeDelivery());
+        response.put("trackingToken", request.getQrCodeDelivery());
 
         trackingService.getLastLocation(request.getId()).ifPresent(location ->
                 response.put("lastLocation", toLocationMap(location)));

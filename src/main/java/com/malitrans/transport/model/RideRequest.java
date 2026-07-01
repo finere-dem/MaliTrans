@@ -40,6 +40,9 @@ public class RideRequest {
 
     private String validationToken; // Token pour URL de validation par le destinataire
 
+    private LocalDateTime validationTokenCreatedAt;
+    private LocalDateTime validationTokenUsedAt;
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -49,6 +52,9 @@ public class RideRequest {
         }
         if (validationToken == null) {
             validationToken = java.util.UUID.randomUUID().toString();
+        }
+        if (validationTokenCreatedAt == null) {
+            validationTokenCreatedAt = createdAt;
         }
     }
 
@@ -187,5 +193,21 @@ public class RideRequest {
 
     public void setValidationToken(String validationToken) {
         this.validationToken = validationToken;
+    }
+
+    public LocalDateTime getValidationTokenCreatedAt() {
+        return validationTokenCreatedAt;
+    }
+
+    public void setValidationTokenCreatedAt(LocalDateTime validationTokenCreatedAt) {
+        this.validationTokenCreatedAt = validationTokenCreatedAt;
+    }
+
+    public LocalDateTime getValidationTokenUsedAt() {
+        return validationTokenUsedAt;
+    }
+
+    public void setValidationTokenUsedAt(LocalDateTime validationTokenUsedAt) {
+        this.validationTokenUsedAt = validationTokenUsedAt;
     }
 }

@@ -31,8 +31,11 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -41,6 +44,7 @@ import java.util.stream.Collectors;
 public class RideRequestService {
 
     private static final Logger logger = LoggerFactory.getLogger(RideRequestService.class);
+    private static final Duration RECIPIENT_VALIDATION_TOKEN_TTL = Duration.ofHours(24);
 
     private final RideRequestRepository repository;
     private final UtilisateurService utilisateurService;
@@ -60,6 +64,12 @@ public class RideRequestService {
         this.mapper = mapper;
         this.notificationService = notificationService;
         this.googleMapsApiKey = googleMapsApiKey != null ? googleMapsApiKey.trim() : "";
+    }
+
+    public static class LinkExpiredException extends RuntimeException {
+        public LinkExpiredException() {
+            super("Ce lien a expir\u00e9.");
+        }
     }
 
     private void runAfterCommit(Runnable action) {
@@ -222,6 +232,37 @@ public class RideRequestService {
     public Optional<RideRequest> getRideRequestByValidationToken(String token) {
         return repository.findByValidationToken(token);
     }
+
+    public Optional<RideRequest> getRideRequestEntityById(Long id) {
+        return repository.findById(id);
+    }
+
+    public Map<String, Object> getRecipientValidationInfo(String token) {
+        RideRequest request = repository.findByValidationToken(token)
+                .orElseThrow(LinkExpiredException::new);
+
+        assertRecipientValidationTokenUsable(request);
+
+        if (request.getValidationStatus() != ValidationStatus.WAITING_RECIPIENT_VALIDATION) {
+            throw new LinkExpiredException();
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("rideId", request.getId());
+        response.put("validationStatus", request.getValidationStatus() != null ? request.getValidationStatus().name() : null);
+        response.put("canValidateLocation", true);
+        response.put("trackingEnabled", false);
+        response.put("driverAssigned", request.getChauffeur() != null);
+        response.put("price", request.getPrice());
+        response.put("packageDescription", request.getPackageDescription() != null
+                ? request.getPackageDescription()
+                : "Colis sans description");
+        response.put("origin", request.getOrigin());
+        response.put("destination", request.getDestination());
+        response.put("senderName", resolveShareSenderName(request));
+        response.put("recipientName", resolveShareRecipientName(request));
+        return response;
+    }
     
     /**
      * Complete recipient validation via public web link
@@ -229,22 +270,16 @@ public class RideRequestService {
     @Transactional
     public RideRequest validateRecipientLocation(String token, Double latitude, Double longitude) {
         RideRequest request = repository.findByValidationToken(token)
-                .orElseThrow(() -> new IllegalArgumentException("Demande introuvable ou jeton invalide"));
+                .orElseThrow(LinkExpiredException::new);
 
         if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) {
             throw new IllegalArgumentException("Coordonnees GPS invalides");
         }
 
-        boolean staleReadyWithoutDestination = request.getValidationStatus() == ValidationStatus.READY_FOR_PICKUP
-                && !hasUsableDestination(request.getDestination())
-                && request.getChauffeur() == null;
+        assertRecipientValidationTokenUsable(request);
 
-        if (staleReadyWithoutDestination) {
-            request.setValidationStatus(ValidationStatus.WAITING_RECIPIENT_VALIDATION);
-        }
-                
         if (request.getValidationStatus() != ValidationStatus.WAITING_RECIPIENT_VALIDATION) {
-            throw new IllegalStateException("Le statut de cette commande ne nécessite pas de validation destinataire.");
+            throw new LinkExpiredException();
         }
         
         // Store a readable address when possible, with coordinates as a safe fallback.
@@ -258,6 +293,7 @@ public class RideRequestService {
         
         // Shift to READY_FOR_PICKUP
         request.setValidationStatus(ValidationStatus.READY_FOR_PICKUP);
+        request.setValidationTokenUsedAt(LocalDateTime.now());
         
         RideRequest saved = repository.save(request);
         
@@ -814,24 +850,33 @@ public class RideRequestService {
             request.setValidationStatus(ValidationStatus.WAITING_RECIPIENT_VALIDATION);
         }
 
-        if (request.getValidationToken() == null || request.getValidationToken().isBlank()) {
-            request.setValidationToken(UUID.randomUUID().toString());
-        }
+        request.setValidationToken(UUID.randomUUID().toString());
+        request.setValidationTokenCreatedAt(LocalDateTime.now());
+        request.setValidationTokenUsedAt(null);
 
         repository.save(request);
 
         StringBuilder link = new StringBuilder(baseUrl)
                 .append("/validate.html?token=")
                 .append(encodeQueryValue(request.getValidationToken()));
-        appendQueryParam(link, "origin", request.getOrigin());
-        appendQueryParam(link, "desc", request.getPackageDescription());
-        appendQueryParam(link, "price", request.getPrice() != null ? request.getPrice().toString() : null);
-        appendQueryParam(link, "sender", resolveShareSenderName(request));
-        appendQueryParam(link, "recipient", resolveShareRecipientName(request));
-        appendQueryParam(link, "status", request.getValidationStatus() != null ? request.getValidationStatus().name() : null);
         appendQueryParam(link, "v", Long.toString(System.currentTimeMillis()));
 
         return link.toString();
+    }
+
+    private void assertRecipientValidationTokenUsable(RideRequest request) {
+        if (request.getValidationTokenUsedAt() != null) {
+            throw new LinkExpiredException();
+        }
+
+        LocalDateTime createdAt = request.getValidationTokenCreatedAt();
+        if (createdAt == null) {
+            createdAt = request.getCreatedAt();
+        }
+
+        if (createdAt == null || createdAt.plus(RECIPIENT_VALIDATION_TOKEN_TTL).isBefore(LocalDateTime.now())) {
+            throw new LinkExpiredException();
+        }
     }
 
     private boolean hasUsableDestination(String destination) {

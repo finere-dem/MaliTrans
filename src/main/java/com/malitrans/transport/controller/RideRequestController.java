@@ -67,6 +67,17 @@ public class RideRequestController {
         return ResponseEntity.ok(service.getReadyForPickupRequests());
     }
 
+    @GetMapping("/validate-info")
+    public ResponseEntity<?> getRecipientValidationInfo(@RequestParam String token) {
+        try {
+            return ResponseEntity.ok(service.getRecipientValidationInfo(token));
+        } catch (RideRequestService.LinkExpiredException e) {
+            return ResponseEntity.status(410).body(java.util.Map.of(
+                    "error", "LINK_EXPIRED",
+                    "message", e.getMessage()));
+        }
+    }
+
     @Operation(summary = "Récupérer un trajet par ID", 
                description = "Retourne les détails d'un trajet spécifique. Accessible aux Clients, Fournisseurs, Chauffeurs et Admins.")
     @ApiResponses({

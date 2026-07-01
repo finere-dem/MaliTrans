@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/health").permitAll() // Koyeb health check: /api/health
                         .requestMatchers("/ws-tracking/**").permitAll() // WebSockets tracking (pas de JWT)
                         .requestMatchers("/test-tracking.html", "/validate.html").permitAll() // Pages statiques
+                        .requestMatchers("/ride/validate-info").permitAll() // Infos publiques via token uniquement
                         .requestMatchers("/config/maps-key").permitAll() // Clé API Google Maps public
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/files/**").authenticated() // File endpoints: authenticated users only
