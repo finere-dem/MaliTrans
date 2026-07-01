@@ -362,6 +362,218 @@
     </div>
 
     <script>
+        (function () {
+            function byId(id) {
+                return document.getElementById(id);
+            }
+
+            function setText(id, value) {
+                var el = byId(id);
+                if (el) {
+                    el.textContent = value || 'Non disponible';
+                }
+            }
+
+            function paramsFromSearch() {
+                var query = window.location.search || '';
+                var out = {};
+                if (query.charAt(0) === '?') {
+                    query = query.substring(1);
+                }
+                if (!query) {
+                    return out;
+                }
+                var parts = query.split('&');
+                for (var i = 0; i < parts.length; i += 1) {
+                    var pair = parts[i].split('=');
+                    var key = decodeURIComponent((pair[0] || '').replace(/\+/g, ' '));
+                    var value = decodeURIComponent((pair.slice(1).join('=') || '').replace(/\+/g, ' '));
+                    if (key) {
+                        out[key] = value;
+                    }
+                }
+                return out;
+            }
+
+            function showErrorCompat(message) {
+                var el = byId('error-alert');
+                if (el) {
+                    el.textContent = message;
+                    el.style.display = 'block';
+                }
+            }
+
+            function clearErrorCompat() {
+                var el = byId('error-alert');
+                if (el) {
+                    el.textContent = '';
+                    el.style.display = 'none';
+                }
+            }
+
+            function formatPriceCompat(price) {
+                if (price === null || price === undefined || String(price).replace(/\s/g, '') === '') {
+                    return 'Prix non renseigne';
+                }
+                var amount = Number(price);
+                if (!isFinite(amount)) {
+                    return 'Prix non renseigne';
+                }
+                return String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+            }
+
+            function formatStatusCompat(status, canValidateLocation) {
+                if (canValidateLocation) {
+                    return 'En attente de votre adresse';
+                }
+                if (status === 'READY_FOR_PICKUP') return 'Adresse confirmee, en attente du livreur';
+                if (status === 'DRIVER_ACCEPTED') return 'Livreur assigne';
+                if (status === 'IN_TRANSIT' || status === 'IN_PROGRESS') return 'Livreur en route vers vous';
+                if (status === 'COMPLETED') return 'Livraison terminee';
+                if (status === 'CANCELED') return 'Course annulee';
+                return 'Statut en cours';
+            }
+
+            function hydrateCompat(data) {
+                data = data || {};
+                setText('val-sender', data.senderName || data.sender || 'Non disponible');
+                setText('val-recipient', data.recipientName || data.recipient || 'Non disponible');
+                setText('val-desc', data.packageDescription || data.desc || 'Non disponible');
+                setText('val-price', formatPriceCompat(data.price));
+                setText('val-origin', data.origin || 'Non disponible');
+                setText('val-destination', data.destination || 'A confirmer apres partage GPS');
+                setText('val-public-status', formatStatusCompat(data.validationStatus || data.status, data.canValidateLocation !== false));
+            }
+
+            function requestJsonCompat(method, url, body, success, failure) {
+                var xhr = new XMLHttpRequest();
+                xhr.open(method, url, true);
+                xhr.setRequestHeader('Accept', 'application/json');
+                if (body) {
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                }
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState !== 4) {
+                        return;
+                    }
+                    var data = {};
+                    try {
+                        data = JSON.parse(xhr.responseText || '{}');
+                    } catch (e) {
+                        data = {};
+                    }
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        success(data);
+                    } else {
+                        failure((data && data.error) || 'Impossible de joindre le serveur.');
+                    }
+                };
+                xhr.onerror = function () {
+                    failure('Connexion impossible. Verifiez le reseau puis reessayez.');
+                };
+                xhr.send(body ? JSON.stringify(body) : null);
+            }
+
+            var params = paramsFromSearch();
+            var token = params.token || '';
+            var hasInlineData = params.sender || params.recipient || params.desc || params.price || params.origin || params.status;
+
+            if (hasInlineData) {
+                hydrateCompat({
+                    senderName: params.sender,
+                    recipientName: params.recipient,
+                    packageDescription: params.desc,
+                    price: params.price,
+                    origin: params.origin,
+                    destination: params.destination,
+                    validationStatus: params.status,
+                    canValidateLocation: true
+                });
+            }
+
+            if (token) {
+                requestJsonCompat('GET', '/api/public/validate/' + encodeURIComponent(token), null, hydrateCompat, function () {
+                    if (!hasInlineData) {
+                        showErrorCompat('Impossible de charger les details de la course. Demandez a l expediteur de renvoyer un lien recent.');
+                    }
+                });
+            }
+
+            window.requestLocation = function () {
+                if (!token) {
+                    showErrorCompat('Lien invalide : token manquant.');
+                    return;
+                }
+                if (!navigator.geolocation) {
+                    showErrorCompat("La geolocalisation n'est pas supportee par votre navigateur.");
+                    return;
+                }
+
+                var btn = byId('validate-btn');
+                var loader = byId('btn-loader');
+                if (btn) {
+                    btn.disabled = true;
+                    var span = btn.getElementsByTagName('span')[0];
+                    if (span) {
+                        span.textContent = 'Recherche GPS en cours...';
+                    }
+                }
+                if (loader) {
+                    loader.style.display = 'block';
+                }
+                clearErrorCompat();
+
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    requestJsonCompat(
+                        'POST',
+                        '/api/public/validate/' + encodeURIComponent(token),
+                        { latitude: position.coords.latitude, longitude: position.coords.longitude },
+                        function (data) {
+                            hydrateCompat(data);
+                            var step = byId('step-1');
+                            var qrContainer = byId('qr-container');
+                            var qr = byId('qrcode');
+                            if (step) step.style.display = 'none';
+                            if (qrContainer) qrContainer.style.display = 'block';
+                            if (qr) qr.textContent = data.qrCodeDelivery ? ('Code livraison : ' + data.qrCodeDelivery) : 'Position confirmee.';
+                        },
+                        function (message) {
+                            showErrorCompat(message);
+                            resetButtonCompat();
+                        }
+                    );
+                }, function (error) {
+                    var message = 'Erreur GPS inconnue.';
+                    if (error.code === 1) message = "Autorisez la localisation pour ce site puis reessayez.";
+                    if (error.code === 2) message = 'Position GPS introuvable. Activez la localisation du telephone puis reessayez.';
+                    if (error.code === 3) message = 'Delai de recherche GPS depasse. Reessayez ou ouvrez le lien dans Safari/Chrome.';
+                    showErrorCompat(message);
+                    resetButtonCompat();
+                }, {
+                    enableHighAccuracy: false,
+                    timeout: 20000,
+                    maximumAge: 600000
+                });
+            };
+
+            function resetButtonCompat() {
+                var btn = byId('validate-btn');
+                var loader = byId('btn-loader');
+                if (btn) {
+                    btn.disabled = false;
+                    var span = btn.getElementsByTagName('span')[0];
+                    if (span) {
+                        span.textContent = 'Partager ma position GPS';
+                    }
+                }
+                if (loader) {
+                    loader.style.display = 'none';
+                }
+            }
+        }());
+    </script>
+
+    <script>
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const apiBaseUrl = '/api/public/validate';
@@ -655,7 +867,7 @@
             let label = 'En attente du livreur';
 
             if (status === 'READY_FOR_PICKUP') {
-                label = driverAssigned ? 'Livreur assigne' : 'En attente d'un livreur';
+                label = driverAssigned ? 'Livreur assigne' : "En attente d'un livreur";
             } else if (status === 'DRIVER_ACCEPTED') {
                 label = 'Livreur assigne';
             } else if (status === 'IN_TRANSIT' || status === 'IN_PROGRESS') {
