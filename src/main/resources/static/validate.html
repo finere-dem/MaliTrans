@@ -416,17 +416,27 @@
             };
         }
 
-        async function fetchJson(url, options = {}, timeoutMs = 10000) {
-            const controller = new AbortController();
-            const timeout = setTimeout(function () {
-                controller.abort();
-            }, timeoutMs);
+        async function fetchJson(url, options, timeoutMs) {
+            options = options || {};
+            timeoutMs = timeoutMs || 10000;
+
+            const canAbort = typeof AbortController !== 'undefined';
+            const controller = canAbort ? new AbortController() : null;
+            const fetchOptions = {};
+            Object.keys(options).forEach(function (key) {
+                fetchOptions[key] = options[key];
+            });
+
+            let timeout = null;
+            if (controller) {
+                fetchOptions.signal = controller.signal;
+                timeout = setTimeout(function () {
+                    controller.abort();
+                }, timeoutMs);
+            }
 
             try {
-                const response = await fetch(url, {
-                    ...options,
-                    signal: controller.signal
-                });
+                const response = await fetch(url, fetchOptions);
                 let data = {};
                 try {
                     data = await response.json();
@@ -435,7 +445,9 @@
                 }
                 return { response, data };
             } finally {
-                clearTimeout(timeout);
+                if (timeout) {
+                    clearTimeout(timeout);
+                }
             }
         }
 
@@ -448,6 +460,11 @@
             errorAlert.style.display = 'none';
             errorAlert.innerText = '';
         }
+
+        window.onerror = function (message) {
+            showError('Erreur de chargement de la page. Rechargez le lien ou demandez un nouveau lien a l expediteur.');
+            return false;
+        };
 
         async function fetchPackageInfo() {
             if (!token) {
