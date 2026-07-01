@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Woyo - Validation et suivi</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
         :root {
             --primary: #20258a;
@@ -612,6 +612,10 @@
             if (!qrText) {
                 return;
             }
+            if (typeof QRCode === 'undefined') {
+                qrcode.textContent = 'Code QR indisponible pour le moment. Gardez cette page ouverte.';
+                return;
+            }
             new QRCode(qrcode, {
                 text: qrText,
                 width: 200,
@@ -747,6 +751,12 @@
 
         function connectTracking(rideId) {
             if (!rideId || stompClient) return;
+            if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') {
+                trackingStatus.textContent = 'Suivi temps reel indisponible';
+                trackingNote.textContent = 'La page actualisera le statut automatiquement.';
+                trackingBadge.classList.remove('connected');
+                return;
+            }
 
             const socket = new SockJS(trackingWsUrl);
             stompClient = Stomp.over(socket);
